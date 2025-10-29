@@ -1,0 +1,11 @@
+{
+    "windowName": "GraphicsEngine",
+    "windowWidth": 800,
+    "windowHeight": 600,
+    "windowMode": "boderless",
+
+    "cameraPosX": 0,
+    "cameraPosY": 0,
+    "cameraPosZ": 0,
+    "cameraFov": 45
+}
