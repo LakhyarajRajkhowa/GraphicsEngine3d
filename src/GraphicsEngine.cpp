@@ -2,15 +2,16 @@
 
 namespace Lengine {
 
-	GraphicsEngine::GraphicsEngine(): 
-		sceneRenderer(camera),
-		inputHandler(camera, inputManager, isRunning)
+	GraphicsEngine::GraphicsEngine() :
+		sceneRenderer(camera, scene, assetManager),
+		inputHandler(camera, inputManager, isRunning),
+		UI(assetManager, scene)
 	{
 		
 	}
 	void GraphicsEngine::initSettings() {
 		std::filesystem::path exePath = std::filesystem::current_path();
-		std::filesystem::path configPath = exePath / "../../config.json";
+		std::filesystem::path configPath = exePath / "../config.json";
 		configPath = std::filesystem::absolute(configPath);
 		settings.loadSettings(configPath.string());
 	}

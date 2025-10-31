@@ -2,6 +2,8 @@
 
 #include <unordered_map>
 #include <glm/glm.hpp>
+#include <SDL2/SDL.h>
+
 
 namespace Lengine {
 	class InputManager
@@ -14,7 +16,7 @@ namespace Lengine {
 
 		void pressKey(unsigned int keyID);
 		void releaseKey(unsigned int keyID);
-		void setMouseCoords(float x, float y);
+		void updateMouseCoords();
 		bool isKeyPressed(unsigned int keyID);
 		bool isKeyDown(unsigned int keyID);
 

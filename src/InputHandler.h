@@ -10,13 +10,18 @@ namespace Lengine {
 	class InputHandler {
 	public:
 		InputHandler(Lengine::Camera3d& cam, Lengine::InputManager& inputmgr, bool& running) : 
-			camera(cam), inputManager(inputmgr), isRunning(running){}
+			camera(cam), inputManager(inputmgr), isRunning(running)
+		{
+			fixCam = false;
+		}
 
 		void handleInputs();
 	private:
 		Lengine::Camera3d& camera;
 		Lengine::InputManager& inputManager;
 		bool& isRunning;
+		bool fixCam;
+
 
 		void handleMouseResponse();
 		void handleKeyboardResponse();
