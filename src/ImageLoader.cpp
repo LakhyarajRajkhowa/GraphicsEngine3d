@@ -1,7 +1,7 @@
-#include <Lengine/ImageLoader.h>
-#include <Lengine/picopng.h>
-#include <Lengine/IOManager.h>
-#include <Lengine/Errors.h>
+#include "ImageLoader.h"
+#include "picopng.h"
+#include "IOManager.h"
+#include "Errors.h"
 
 namespace Lengine {
 

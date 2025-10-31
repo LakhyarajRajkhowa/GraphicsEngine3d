@@ -17,24 +17,12 @@ namespace Lengine {
     }
 
     void SceneRenderer::initScene() {
-        // Compile shader
-        defaultShader.compileShaders("../../Shaders/default.vert", "../../Shaders/default.frag");
-        defaultShader.linkShaders();
-
-
-        gridShader.compileShaders("../../Shaders/grid.vert", "../../Shaders/grid.frag");
-        gridShader.linkShaders();
-
-        // Load cube model (or plane)
-        defaultModel.loadModel("../../assets/obj/cube.obj", defaultMesh);
-
+        scene.createEntity("grid",
+            assetManager.loadMesh("grid", "../assets/obj/plane.obj"),
+            assetManager.loadShader("grid", "../Shaders/grid.vert", "../Shaders/grid.frag")
+        );
         
-        gridModel.loadModel("../../assets/obj/plane.obj", gridMesh);
-
-        // Create entities
-        scene.setDefaults(defaultMesh.get(), &defaultShader);
-        scene.createEntity("Cube1");
-        scene.createEntity("grid", gridMesh.get(), &gridShader);
+       
     }
     void SceneRenderer::renderScene() {
 

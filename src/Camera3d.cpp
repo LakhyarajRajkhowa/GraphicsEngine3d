@@ -36,49 +36,56 @@ namespace Lengine {
     }
 
    
-    void Camera3d::update(float deltaTime ) {
-        const float speed = 0.1f * deltaTime;
+    void Camera3d::update(float deltaTime, glm::vec2 mouseCoords , bool fixCam) {
 
-           
-        for (SDL_Keycode key : { SDLK_w, SDLK_s, SDLK_a, SDLK_d, SDLK_SPACE, SDLK_LSHIFT, SDLK_g, SDLK_h , SDLK_UP}) {
-            if (_inputManager->isKeyDown(key)) {
-                switch (key) {
-                case SDLK_UP:
-                    position += glm::normalize(front) * speed * 10.0f;
-                    break;
-                case SDLK_w:
-                    position += glm::normalize(front) * speed ;
-                    break;
-                case SDLK_s:
-                    position -= glm::normalize(front) * speed;
-                    break;
-                case SDLK_a:
-                    position -= glm::normalize(glm::cross(front, up)) * speed;
-                    break;
-                case SDLK_d:
-                    position += glm::normalize(glm::cross(front, up)) * speed;
-                    break;
-                case SDLK_SPACE:
-                    position += glm::normalize(up) * speed;
-                    break;
-                case SDLK_LSHIFT:
-                    position -= glm::normalize(up) * speed;
-                    break;
-                }
-            }
-            if (_inputManager->isKeyPressed(key)) {
-                switch (key) {
-                case SDLK_g:
-                    _applyGravity = true;
-                    break;
-                case SDLK_h:
-                    _applyGravity = false;
-                    break;
-                }
-            }
+        if (!fixCam){
+            const float speed = 0.1f * deltaTime;
 
-            keepCameraAbovePlane();
+            processMouse(mouseCoords.x, mouseCoords.y);
+            SDL_SetRelativeMouseMode(SDL_TRUE);
+
+            for (SDL_Keycode key : { SDLK_w, SDLK_s, SDLK_a, SDLK_d, SDLK_SPACE, SDLK_LSHIFT, SDLK_g, SDLK_h, SDLK_UP}) {
+                if (_inputManager->isKeyDown(key)) {
+                    switch (key) {
+                    case SDLK_UP:
+                        position += glm::normalize(front) * speed * 10.0f;
+                        break;
+                    case SDLK_w:
+                        position += glm::normalize(front) * speed;
+                        break;
+                    case SDLK_s:
+                        position -= glm::normalize(front) * speed;
+                        break;
+                    case SDLK_a:
+                        position -= glm::normalize(glm::cross(front, up)) * speed;
+                        break;
+                    case SDLK_d:
+                        position += glm::normalize(glm::cross(front, up)) * speed;
+                        break;
+                    case SDLK_SPACE:
+                        position += glm::normalize(up) * speed;
+                        break;
+                    case SDLK_LSHIFT:
+                        position -= glm::normalize(up) * speed;
+                        break;
+                    }
+                }
+                if (_inputManager->isKeyPressed(key)) {
+                    switch (key) {
+                    case SDLK_g:
+                        _applyGravity = true;
+                        break;
+                    case SDLK_h:
+                        _applyGravity = false;
+                        break;
+                    
+                    }
+                }
+
+                keepCameraAbovePlane();
+            }
         }
+        
     }
 
     void Camera3d::processMouse(float xoffset, float yoffset) {

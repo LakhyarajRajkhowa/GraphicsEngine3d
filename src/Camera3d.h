@@ -15,7 +15,7 @@ namespace Lengine {
 
         glm::mat4 getViewMatrix();
         glm::mat4 getProjectionMatrix();
-        void update(float deltaTime);
+        void update(float deltaTime, glm::vec2 mouseCoords, bool fixCam);
         void processMouse(float xoffset, float yoffset);
 
     private:

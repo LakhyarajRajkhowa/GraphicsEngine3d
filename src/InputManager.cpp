@@ -21,9 +21,11 @@ namespace Lengine {
 		_keyMap[keyID] = false;
 	}
 
-	void InputManager::setMouseCoords(float x, float y) {
-		_mouseCoords.x = x;
-		_mouseCoords.y = y;
+	void InputManager::updateMouseCoords() {
+		int mouseX, mouseY;
+		SDL_GetRelativeMouseState(&mouseX, &mouseY);
+		_mouseCoords.x = mouseX;
+		_mouseCoords.y = mouseY;
 	}
 
 

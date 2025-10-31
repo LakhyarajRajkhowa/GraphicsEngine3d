@@ -25,6 +25,8 @@ namespace Lengine {
 		Lengine::Camera3d camera;
 		Lengine::InputManager inputManager;
 		Lengine::InputHandler inputHandler;
+		Lengine::AssetManager assetManager;
+		Lengine::Scene scene;
 		Lengine::SceneRenderer sceneRenderer;
 		Lengine::UIRenderer UI;
 
