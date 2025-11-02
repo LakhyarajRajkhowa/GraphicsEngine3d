@@ -23,7 +23,7 @@ namespace Lengine {
 
 	void InputManager::updateMouseCoords() {
 		int mouseX, mouseY;
-		SDL_GetRelativeMouseState(&mouseX, &mouseY);
+		SDL_GetMouseState(&mouseX, &mouseY);
 		_mouseCoords.x = mouseX;
 		_mouseCoords.y = mouseY;
 	}

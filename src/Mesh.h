@@ -15,12 +15,17 @@ namespace Lengine {
         ~Mesh();
 
         void draw() const;
-
+        glm::vec3 getLocalCenter() { return localCenter; }
+        float& getBoundingRadius() { return boundingRadius; }
     private:
+        void computeBounds();
         void setupMesh();
 
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
+
+        glm::vec3 localCenter;
+        float boundingRadius;
 
         GLuint VAO, VBO, EBO;
     };

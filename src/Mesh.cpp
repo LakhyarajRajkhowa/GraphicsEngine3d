@@ -5,6 +5,7 @@ namespace Lengine {
     Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
         : vertices(vertices), indices(indices)
     {
+        computeBounds();
         setupMesh();
 
     }
@@ -13,6 +14,30 @@ namespace Lengine {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &VBO);
         glDeleteBuffers(1, &EBO);
+    }
+
+    void Mesh::computeBounds() {
+        if (vertices.empty()) return;
+
+        glm::vec3 minV = vertices[0].position;
+        glm::vec3 maxV = vertices[0].position;
+
+        // Step 1: find bounding box
+        for (const auto& v : vertices) {
+            minV = glm::min(minV, v.position);
+            maxV = glm::max(maxV, v.position);
+        }
+
+        // Step 2: center = middle of min and max
+        localCenter = (minV + maxV) * 0.5f;
+
+        // Step 3: bounding radius = max distance from center
+        float maxDist = 0.0f;
+        for (const auto& v : vertices) {
+            maxDist = glm::max(maxDist, glm::length(v.position - localCenter));
+        }
+
+        boundingRadius = maxDist;
     }
 
     void Mesh::setupMesh() {

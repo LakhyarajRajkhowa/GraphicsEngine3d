@@ -28,6 +28,9 @@ namespace Lengine {
         }
 
         _sdlWindow = SDL_CreateWindow(windowName.c_str(), SDL_WINDOWPOS_CENTERED , SDL_WINDOWPOS_CENTERED, screenWidth, screenHeight, flags);
+        SDL_GL_GetDrawableSize(_sdlWindow, &screenWidth, &screenHeight);
+        _screenWidth = screenWidth;
+        _screenHeight = screenHeight;
         if (_sdlWindow == nullptr)
         {
 

@@ -24,6 +24,9 @@ namespace Lengine {
 		const std::string& getName() const { return name; }
 		Mesh* getMesh() const { return mesh; }
 		GLSLProgram* getShader() const { return shader; }
+		Transform& getTransform() {
+			return transform;
+		}
 		const glm::mat4& getTransformMatrix() const { return transform.getMatrix(); }
 	private:
         

@@ -28,7 +28,7 @@ namespace Lengine {
         ImGui::End();
 
         // ---------------- Load File Window ----------------
-        ImGui::SetNextWindowPos(ImVec2(1250, 50));
+        ImGui::SetNextWindowPos(ImVec2(500, 50));
         ImGui::SetNextWindowBgAlpha(0.35f);
 
         ImGui::Begin("Tools", nullptr,
@@ -39,7 +39,7 @@ namespace Lengine {
         static char modelName[128] = "MyModel";
         static char modelPath[512] = "";
 
-        ImGui::SetNextWindowPos(ImVec2(1250, 50));
+        ImGui::SetNextWindowPos(ImVec2(500, 50));
         ImGui::SetNextWindowBgAlpha(0.35f);
         ImGui::Begin("Tools", nullptr,
             ImGuiWindowFlags_NoDecoration |
@@ -56,6 +56,11 @@ namespace Lengine {
         }
 
         ImGui::End();
+
+        if (ImGui::Button(scene.showBoundingSphere ? "Hide Bounding Sphere" : "Show Bounding Sphere"))
+        {
+            scene.showBoundingSphere = !scene.showBoundingSphere;
+        }
 
         // --------------------------------------
         // POPUP WINDOW
@@ -122,6 +127,11 @@ namespace Lengine {
             ImGui::EndPopup();
         }
         ImGui::End();
+
+      
+      
+
+   
 
     }
 }

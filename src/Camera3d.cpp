@@ -34,7 +34,13 @@ namespace Lengine {
     glm::mat4 Camera3d::getProjectionMatrix() {
         return glm::perspective(glm::radians(fov), aspectRatio, 0.50f, 1000.0f);
     }
+    glm::vec3 Camera3d::getRightVector() {
+        return glm::normalize(glm::cross(front, up));
+    }
 
+    glm::vec3 Camera3d::getForwardVector() {
+        return glm::normalize(front);
+    }
    
     void Camera3d::update(float deltaTime, glm::vec2 mouseCoords , bool fixCam) {
 
@@ -42,7 +48,6 @@ namespace Lengine {
             const float speed = 0.1f * deltaTime;
 
             processMouse(mouseCoords.x, mouseCoords.y);
-            SDL_SetRelativeMouseMode(SDL_TRUE);
 
             for (SDL_Keycode key : { SDLK_w, SDLK_s, SDLK_a, SDLK_d, SDLK_SPACE, SDLK_LSHIFT, SDLK_g, SDLK_h, SDLK_UP}) {
                 if (_inputManager->isKeyDown(key)) {

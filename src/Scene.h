@@ -14,6 +14,9 @@ namespace Lengine {
             defaultMesh = mesh;
             defaultShader = shader;
         }
+
+        bool showBoundingSphere = false;
+
     private:
         std::vector<std::unique_ptr<Entity>> entities;
         Mesh* defaultMesh = nullptr;

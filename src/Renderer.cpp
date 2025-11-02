@@ -10,13 +10,14 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
 
         Mesh* mesh = entity->getMesh();
         GLSLProgram* shader = entity->getShader();
-
        
         if (!mesh || !shader) continue;
 
-
         shader->use();
-        shader->setMat4("model", glm::mat4(1.0f));
+
+        glm::mat4 model = entity->getTransformMatrix();
+     
+        shader->setMat4("model", model);
         shader->setMat4("view", camera.getViewMatrix());
         shader->setMat4("projection", camera.getProjectionMatrix());
         shader->setVec3("cameraPos", camera.getCameraPosition());
@@ -25,4 +26,7 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
 
         shader->unuse();
     }
+
+    
+    
 }

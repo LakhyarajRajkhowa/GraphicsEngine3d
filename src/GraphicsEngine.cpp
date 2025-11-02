@@ -4,10 +4,10 @@ namespace Lengine {
 
 	GraphicsEngine::GraphicsEngine() :
 		sceneRenderer(camera, scene, assetManager),
-		inputHandler(camera, inputManager, isRunning),
+		inputHandler(camera, inputManager, scene, window, isRunning),
 		UI(assetManager, scene)
 	{
-		
+
 	}
 	void GraphicsEngine::initSettings() {
 		std::filesystem::path exePath = std::filesystem::current_path();
@@ -27,7 +27,9 @@ namespace Lengine {
 			settings.windowWidth,
 			settings.windowHeight,
 			settings.windowMode
-			);
+		);
+
+		
 
 		camera.init(
 			settings.windowWidth,
@@ -36,13 +38,13 @@ namespace Lengine {
 			{ settings.cameraPosX, 5, settings.cameraPosZ },
 			settings.cameraFov
 		);
-		
+
 		sceneRenderer.init();
 		sceneRenderer.initScene();
 		isRunning = true;
 
 		while (isRunning) {
-			
+
 			inputHandler.handleInputs();
 			sceneRenderer.beginFrame({ 0.0f, 0.0f, 0.0f, 1.0f });
 			sceneRenderer.renderScene();
@@ -50,9 +52,9 @@ namespace Lengine {
 
 			sceneRenderer.endFrame();
 			window.swapBuffer();
-			
+
 		}
-			
+
 
 	}
 

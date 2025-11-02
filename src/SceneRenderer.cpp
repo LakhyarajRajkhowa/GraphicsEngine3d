@@ -1,4 +1,5 @@
 #include "SceneRenderer.h"
+#include "boundingSphere.h"
 
 namespace Lengine {
     void SceneRenderer::init() {
@@ -22,11 +23,14 @@ namespace Lengine {
             assetManager.loadShader("grid", "../Shaders/grid.vert", "../Shaders/grid.frag")
         );
         
-       
+        boundingSphereInit();
+
     }
     void SceneRenderer::renderScene() {
 
         renderer.renderScene(scene, camera);
+
+        if(scene.showBoundingSphere) renderBoudingSpheres(scene, camera);
 
     }
 
