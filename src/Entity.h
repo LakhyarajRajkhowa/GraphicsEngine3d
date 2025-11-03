@@ -5,30 +5,31 @@
 #include "Mesh.h"
 #include "Model.h"
 #include "GLSLProgram.h"
+#include "Material.h"
 #include "Camera3d.h"
 #include "Transform.h"
 
 namespace Lengine {
 	class Entity {
 	public:
-		std::string name;
-	    Mesh* mesh = nullptr;
-		GLSLProgram* shader = nullptr;
-		Transform transform;              
-
-		Entity(const std::string& n, Mesh* m, GLSLProgram* s)
-			: name(n), mesh(m), shader(s) {
+		Entity(const std::string& n, Mesh* m, Material* mat)
+			: name(n), mesh(m), material(mat) {
 		}
-
-		void draw(Camera3d& camera);
+		
 		const std::string& getName() const { return name; }
 		Mesh* getMesh() const { return mesh; }
-		GLSLProgram* getShader() const { return shader; }
+		Material* getMaterial() const { return material; }
 		Transform& getTransform() {
 			return transform;
 		}
 		const glm::mat4& getTransformMatrix() const { return transform.getMatrix(); }
+		
+		bool isSelected = false;
 	private:
+		std::string name;
+		Mesh* mesh = nullptr;
+		Material* material = nullptr;
+		Transform transform;
         
 	};
 }

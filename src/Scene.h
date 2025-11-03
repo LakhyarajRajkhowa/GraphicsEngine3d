@@ -6,7 +6,12 @@ namespace Lengine {
     class Scene {
     public:
         
-        Entity* createEntity(const std::string& name, Mesh* mesh = nullptr, GLSLProgram* shader = nullptr);
+        Entity* createEntity(
+            const std::string& name,
+            Mesh* mesh = nullptr,
+            GLSLProgram* shader = nullptr,
+            GLTexture* texture = nullptr 
+        );
         Entity* getEntityByName(const std::string& name);
         const std::vector<std::unique_ptr<Entity>>& getEntities() const { return entities; }
         void removeEntity(const std::string& name);

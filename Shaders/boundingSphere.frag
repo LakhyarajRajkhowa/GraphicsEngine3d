@@ -2,9 +2,9 @@
 
 out vec4 FragColor;
 
-uniform vec3 color;   // we can set sphere color
+uniform vec4 color;   // we can set sphere color
 
 void main()
 {
-    FragColor = vec4(color, 1.0);
+    FragColor = vec4(color);
 }

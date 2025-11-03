@@ -42,105 +42,98 @@ namespace Lengine {
         }
     }
 
+    // this shit is a mess!
     void InputHandler::moveEntity(glm::vec2 mouseCoords) {
         int mouseX = mouseCoords.x, mouseY = mouseCoords.y;
 
-        if (moveMode) {
+        if (!moveMode) {
+            return;
+        }
 
-            glm::vec3 rayDir = getRayFromMouse(
-                mouseX,
-                mouseY,
-                window.getScreenWidth(),
-                window.getScreenHeight(),
-                camera.getViewMatrix(),
-                camera.getProjectionMatrix()
-            );
+        glm::vec3 rayDir = getRayFromMouse(
+            mouseX,
+            mouseY,
+            window.getScreenWidth(),
+            window.getScreenHeight(),
+            camera.getViewMatrix(),
+            camera.getProjectionMatrix()
+        );
 
-            glm::vec3 rayOrigin = camera.getCameraPosition();
+        glm::vec3 rayOrigin = camera.getCameraPosition();
+        const auto& entities = scene.getEntities();
 
-            const auto& entities = scene.getEntities();
+        if (!SDL_GetMouseState(nullptr, nullptr)) {
+            selectedEntity = nullptr;
+        }
+        else {
+            if (selectedEntity != nullptr) {
+                glm::vec3 currentHit = RayPlaneIntersection(
+                    rayOrigin, rayDir,
+                    dragPlaneNormal, dragPlaneY
+                );
 
-            // -------------------------
-            // STEP 1: Select object
-            // -------------------------
-            if (SDL_GetMouseState(nullptr, nullptr)) {
-                if (selectedEntity == nullptr) {
-                    float closest = 999999.0f;
-
-                    for (auto& e : entities) {
-                        if (e->getName() == "grid") continue;
-
-                        float radius = e->getMesh()->getBoundingRadius();
-
-                        if (rayIntersectsSphere(rayOrigin, rayDir, e->getTransform().position + e.get()->mesh->getLocalCenter(), radius)) {
-                            float dist = glm::distance(rayOrigin, e->getTransform().position + e.get()->mesh->getLocalCenter());
-                            if (dist < closest) {
-                                closest = dist;
-                                selectedEntity = e.get();
-
-                                dragPlaneNormal = glm::vec3(0, 1, 0); // ground plane
-                                dragPlaneY = selectedEntity->getTransform().position.y;
-
-                                dragStartPoint = RayPlaneIntersection(
-                                    rayOrigin, rayDir,
-                                    dragPlaneNormal, dragPlaneY
-                                );
-
-                                dragOffset = selectedEntity->getTransform().position - dragStartPoint;
-
-
-                                if (inputManager.isKeyPressed(SDL_BUTTON_LEFT)) {
-                                    confirmSelectedEntity = !confirmSelectedEntity;
-                                    confirmedSelectedEntity = selectedEntity;
-                                    std::cout << "left clicked to set !\n";
-                                }
-                            }
-
-                            std::cout << "rtay hitting on object" << std::endl;
-                        }
-                        else {
-                            if (inputManager.isKeyPressed(SDL_BUTTON_LEFT)) {
-                                confirmSelectedEntity = !confirmSelectedEntity;
-                                confirmedSelectedEntity = nullptr;
-                                std::cout << "left clicked to unset !\n";
-
-                            }
-                        }
-                    }
-
-                    lastMouseX = mouseX;
-                    lastMouseY = mouseY;
+                if (SDL_BUTTON(SDL_BUTTON_LEFT)) {
+                    selectedEntity->getTransform().position = currentHit + dragOffset;
                 }
-                // -------------------------
-                // STEP 2: Move selected object
-                // -------------------------
-                else {
-
-
-
-                    glm::vec3 currentHit = RayPlaneIntersection(
-                        rayOrigin, rayDir,
-                        dragPlaneNormal, dragPlaneY
-                    );
-
-
-                    if (SDL_BUTTON(SDL_BUTTON_LEFT)) {
-
-                        selectedEntity->getTransform().position = currentHit + dragOffset;
-
-                    }
-
-
+                if (inputManager.isKeyDown(SDLK_UP)) {
+                    selectedEntity->getTransform().position.y += 1.0f;
                 }
+                if (inputManager.isKeyDown(SDLK_DOWN)) {
+                    selectedEntity->getTransform().position.y -= 1.0f;
+                }
+                
             }
             else {
 
-                // Mouse released → stop moving
-                selectedEntity = nullptr;
-            }
+
+                float closest = 999999.0f;
+
+                for (auto& e : entities) {
+                    if (e->getName() == "grid") continue;
+
+                    
+                    float radius = e->getMesh()->getBoundingRadius() * e->getTransform().scale.x;
+                    glm::vec3 centre = e->getTransform().position + e.get()->getMesh()->getLocalCenter() * e->getTransform().scale;
+
+                    if (rayIntersectsSphere(rayOrigin, rayDir, centre, radius)) {
+                        float dist = glm::distance(rayOrigin, centre);
+                        if (dist < closest) {
+                            closest = dist;
+                            selectedEntity = e.get();
+
+                            dragPlaneNormal = glm::vec3(0, 1, 0); 
+                            dragPlaneY = selectedEntity->getTransform().position.y;
+
+                            dragStartPoint = RayPlaneIntersection(
+                                rayOrigin, rayDir,
+                                dragPlaneNormal, dragPlaneY
+                            );
+
+                            dragOffset = selectedEntity->getTransform().position - dragStartPoint;
+
+                            // entity selected
+                            if (mouseLeftReleased) {
+                                if (selectedEntity != nullptr ) {
+                                    confirmSelectedEntity = true;
+                                    if(confirmedSelectedEntity != nullptr)confirmedSelectedEntity->isSelected = false;
+                                    confirmedSelectedEntity = selectedEntity;
+                                    confirmedSelectedEntity->isSelected = true;
+                                }                               
+                                mouseLeftReleased = false;
+                            }
+                        }
+                    }
+                }
+
+        if(mouseLeftReleased && confirmedSelectedEntity != nullptr) {
+            confirmedSelectedEntity->isSelected = false;
+            confirmSelectedEntity = false;
+            confirmedSelectedEntity = nullptr;
+            
         }
 
-
+            }
+        }
     }
 
 
@@ -163,27 +156,36 @@ namespace Lengine {
                 inputManager.releaseKey(event.key.keysym.sym);
                 break;
             case SDL_MOUSEBUTTONDOWN:
-                inputManager.pressKey(event.button.button);
+                if (event.button.button == SDL_BUTTON_LEFT)
+                    mouseLeftDown = true;
                 break;
+
             case SDL_MOUSEBUTTONUP:
-                inputManager.releaseKey(event.button.button);
+                if (event.button.button == SDL_BUTTON_LEFT) {
+                    mouseLeftDown = false;
+                    mouseLeftReleased = true;  
+                }
                 break;
+
             }
 
             if (event.type == SDL_MOUSEWHEEL) {
 
                 if (event.wheel.y > 0) {
                     if (confirmSelectedEntity && confirmedSelectedEntity != nullptr) {
-                        confirmedSelectedEntity->getTransform().scale += glm::vec3(0.1f);
-
+                        confirmedSelectedEntity->getTransform().scale +=
+                            (confirmedSelectedEntity->getTransform().scale.x < 0.1f) ?
+                            (confirmedSelectedEntity->getTransform().scale.x < 0.01f) ?
+                            glm::vec3(0.001f) : glm::vec3(0.01f) : glm::vec3(0.1f);
                     }
-                    printf("Scroll UP\n");
                 }
                 else if (event.wheel.y < 0) {
                     if (confirmSelectedEntity && confirmedSelectedEntity != nullptr) {
-                        confirmedSelectedEntity->getTransform().scale -= glm::vec3(0.1f);
+                        confirmedSelectedEntity->getTransform().scale -= 
+                            (confirmedSelectedEntity->getTransform().scale.x < 0.1f )?
+                                (confirmedSelectedEntity->getTransform().scale.x < 0.01f) ?
+                                    glm::vec3(0.001f):glm::vec3(0.01f):glm::vec3(0.1f);
                     }
-                    printf("Scroll DOWN\n");
                 }
             }
         }

@@ -159,6 +159,15 @@ namespace Lengine {
         if (loc == -1) return;  // uniform not found
         glUniform4f(loc, vec.r, vec.g, vec.b, vec.a);
     }
+    void GLSLProgram::setFloat(const std::string& name, float value) {
+        GLint location = glGetUniformLocation(_programID, name.c_str());
+        
+        glUniform1f(location, value);
+    }
+    void GLSLProgram::setInt(const std::string& name, int value) {
+        GLint location = glGetUniformLocation(_programID, name.c_str());
+        glUniform1i(location, value);
+    }
 }
 
 

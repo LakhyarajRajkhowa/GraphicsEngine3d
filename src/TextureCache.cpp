@@ -1,5 +1,5 @@
-#include <Lengine/TextureCache.h>
-#include <Lengine/ImageLoader.h>
+#include "TextureCache.h"
+#include "ImageLoader.h"
 
 namespace Lengine {
 

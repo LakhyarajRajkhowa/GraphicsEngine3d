@@ -71,13 +71,13 @@ namespace Lengine {
         gizmoShader.use();
         gizmoShader.setMat4("view", camera.getViewMatrix());
         gizmoShader.setMat4("projection", camera.getProjectionMatrix());
-        gizmoShader.setVec3("color", glm::vec3(1, 1, 1));
+        gizmoShader.setVec4("color", glm::vec4(0, 1, 0, 0.2));
 
         for (auto& e : scene.getEntities()) {
             if (e->getName() == "grid") continue;
 
             float r = e->getMesh()->getBoundingRadius();
-            glm::vec3 pos = e->transform.position;
+            glm::vec3 pos = e->getTransform().position;
 
             glm::mat4 model(1.0f);
             glm::vec3 scaledCenter = e->getMesh()->getLocalCenter() * e->getTransform().scale;
@@ -88,11 +88,11 @@ namespace Lengine {
 
             gizmoShader.setMat4("model", model);
 
-            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+           // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
             gizmoSphere->draw();
         }
 
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+       // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
     }
 
 }

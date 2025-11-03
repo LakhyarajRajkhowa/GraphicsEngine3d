@@ -2,7 +2,7 @@
     "windowName": "GraphicsEngine",
     "windowWidth": 800,
     "windowHeight": 600,
-    "windowMode": "borderless",
+    "windowMode": "fullscreen",
 
     "cameraPosX": 0,
     "cameraPosY": 0,

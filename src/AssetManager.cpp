@@ -35,3 +35,14 @@ GLSLProgram* AssetManager::loadShader(const std::string& name,
 GLSLProgram* AssetManager::getShader(const std::string& name) {
     return shaders[name].get();
 }
+
+GLTexture* AssetManager::loadTexture(const std::string& name , const std::string& path) {
+
+    if (textures.count(name)) return textures[name].get();
+    auto texture = std::make_unique<GLTexture>();
+
+    *texture = textureCache.getTexture(path);
+    
+    textures[name] = std::move(texture);
+    return textures[name].get();
+}

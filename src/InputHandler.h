@@ -31,9 +31,8 @@ namespace Lengine {
 		bool moveMode;
 		bool confirmSelectedEntity = false;
 
-		bool leftClicked = false;
-		bool leftReleased = false;
-		bool leftHeld = false;   // optional but useful
+		bool mouseLeftDown = false;
+		bool mouseLeftReleased = false;
 
 		Entity* confirmedSelectedEntity = nullptr;
 
