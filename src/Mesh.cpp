@@ -2,7 +2,7 @@
 #include <iostream>
 
 namespace Lengine {
-    Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
+    SubMesh::SubMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
         : vertices(vertices), indices(indices)
     {
         computeBounds();
@@ -10,13 +10,13 @@ namespace Lengine {
 
     }
 
-    Mesh::~Mesh() {
+    SubMesh::~SubMesh() {
         glDeleteVertexArrays(1, &VAO);
         glDeleteBuffers(1, &VBO);
         glDeleteBuffers(1, &EBO);
     }
 
-    void Mesh::computeBounds() {
+    void SubMesh::computeBounds() {
         if (vertices.empty()) return;
 
         glm::vec3 minV = vertices[0].position;
@@ -38,9 +38,11 @@ namespace Lengine {
         }
 
         boundingRadius = maxDist;
+
+
     }
 
-    void Mesh::setupMesh() {
+    void SubMesh::setupMesh() {
 
         glGenVertexArrays(1, &VAO);
         glGenBuffers(1, &VBO);
@@ -72,7 +74,7 @@ namespace Lengine {
 
     }
 
-    void Mesh::draw() const {
+    void SubMesh::draw() const {
         glBindVertexArray(VAO);
         glDrawElements(GL_TRIANGLES, static_cast<GLsizei>(indices.size()), GL_UNSIGNED_INT, 0);
         glBindVertexArray(0);

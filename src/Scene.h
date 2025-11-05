@@ -5,12 +5,13 @@
 namespace Lengine {
     class Scene {
     public:
-        
+      
+
         Entity* createEntity(
             const std::string& name,
             Mesh* mesh = nullptr,
             GLSLProgram* shader = nullptr,
-            GLTexture* texture = nullptr 
+            GLTexture* texture = nullptr
         );
         Entity* getEntityByName(const std::string& name);
         const std::vector<std::unique_ptr<Entity>>& getEntities() const { return entities; }
@@ -24,7 +25,9 @@ namespace Lengine {
 
     private:
         std::vector<std::unique_ptr<Entity>> entities;
+        SubMesh* defaultSubMesh = nullptr;
         Mesh* defaultMesh = nullptr;
+
         GLSLProgram* defaultShader = nullptr;
     };
 }

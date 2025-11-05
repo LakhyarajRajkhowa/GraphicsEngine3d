@@ -3,7 +3,7 @@
 
 namespace Lengine {
 
-    std::unique_ptr<Mesh> gizmoSphere;
+    std::unique_ptr<SubMesh> gizmoSphere;
     GLSLProgram gizmoShader;
      inline void generateSphereMesh(std::vector<Vertex>& vertices,
         std::vector<unsigned int>& indices,
@@ -60,9 +60,9 @@ namespace Lengine {
         std::vector<Vertex> verts;
         std::vector<unsigned int> inds;
         generateSphereMesh(verts, inds);
-        gizmoSphere = std::make_unique<Mesh>(verts, inds);
+        gizmoSphere = std::make_unique<SubMesh>(verts, inds);
 
-        gizmoShader.compileShaders("../Shaders/boundingSphere.vert", "../Shaders/boundingSphere.frag");
+        gizmoShader.compileShaders("../assets/Shaders/boundingSphere.vert", "../assets/Shaders/boundingSphere.frag");
         gizmoShader.linkShaders();
     }
    
@@ -76,20 +76,24 @@ namespace Lengine {
         for (auto& e : scene.getEntities()) {
             if (e->getName() == "grid") continue;
 
-            float r = e->getMesh()->getBoundingRadius();
-            glm::vec3 pos = e->getTransform().position;
 
-            glm::mat4 model(1.0f);
-            glm::vec3 scaledCenter = e->getMesh()->getLocalCenter() * e->getTransform().scale;
+            for (auto& sm : e->getMesh()->subMeshes) {
+                float r = sm.getBoundingRadius();
+                glm::vec3 pos = e->getTransform().position;
 
-            model = glm::translate(model, pos + scaledCenter);
-            model = glm::scale(model, glm::vec3(r) * e->getTransform().scale);
+                glm::mat4 model(1.0f);
+                glm::vec3 scaledCenter = sm.getLocalCenter() * e->getTransform().scale;
+
+                model = glm::translate(model, pos + scaledCenter);
+                model = glm::scale(model, glm::vec3(r) * e->getTransform().scale);
 
 
-            gizmoShader.setMat4("model", model);
+                gizmoShader.setMat4("model", model);
 
-           // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-            gizmoSphere->draw();
+                // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+                gizmoSphere->draw();
+            }
+          
         }
 
        // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);

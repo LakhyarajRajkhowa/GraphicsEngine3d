@@ -18,6 +18,8 @@ namespace Lengine {
 		
 		const std::string& getName() const { return name; }
 		Mesh* getMesh() const { return mesh; }
+
+		
 		Material* getMaterial() const { return material; }
 		Transform& getTransform() {
 			return transform;

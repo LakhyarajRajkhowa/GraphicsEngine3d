@@ -5,7 +5,7 @@ namespace Lengine {
 	GraphicsEngine::GraphicsEngine() :
 		sceneRenderer(camera, scene, assetManager),
 		inputHandler(camera, inputManager, scene, window, isRunning),
-		UI(assetManager, scene)
+		UI(assetManager, scene, sceneRenderer.renderer)
 	{
 
 	}

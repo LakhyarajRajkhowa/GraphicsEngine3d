@@ -1,13 +1,18 @@
 #include "Model.h"
 
+#include "LoadOBJ.h"
 #include <memory>
 namespace Lengine {
-    void Model::loadModel(const std::string& path, std::shared_ptr<Lengine::Mesh>& mesh) {
-        std::vector<Vertex> vertices;
-        std::vector<unsigned int> indices;
+   
+    void Model::loadModel(const std::string& name, const std::string& path, std::shared_ptr<Lengine::Mesh>& mesh) {
+        mesh = std::make_shared<Lengine::Mesh>();
+        mesh->name = name;
+        
+        Lengine::loadOBJ(path, *mesh);
 
-        Lengine::loadOBJ(path, vertices, indices);
-        mesh = std::make_shared<Lengine::Mesh>(vertices, indices);
+        for (auto& sm : mesh->subMeshes)
+            sm.setupMesh();
+
     }
 
 }

@@ -6,13 +6,20 @@
 
 namespace Lengine {
     class Material {
+    private: 
+        glm::vec3 diffuseColor;   // Kd
+        glm::vec3 ambientColor;   // Ka
+        glm::vec3 specularColor;  // Ks
+        float shininess;          // Ns
+        std::string diffuseMap;   // map_Kd
+        std::string normalMap;    // map_bump
     public:
         GLSLProgram* shader = nullptr;
 
         // Basic properties
         glm::vec4 baseColor = glm::vec4(0.54, 0.54, 0.54, 1.0);
-        float metallic = 0.5f;
-        float roughness = 0.5f;
+        float metallic = 0.0f;
+        float roughness = 0.0f;
         
 
         GLTexture* albedoTexture{};
@@ -22,8 +29,7 @@ namespace Lengine {
             : shader(shaderProgram) {
         }
 
-        void apply() {
-            shader->use();
+        void apply(GLSLProgram* shader) {
 
             shader->setFloat("metallic", metallic);
             shader->setFloat("roughness", roughness);

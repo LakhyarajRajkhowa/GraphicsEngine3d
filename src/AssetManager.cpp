@@ -1,19 +1,22 @@
 #include "AssetManager.h"
+#include <iostream>
 
 using namespace Lengine;
+
+
+Mesh* AssetManager::getMesh(const std::string& name) {
+    return meshes[name].get();
+}
 
 Mesh* AssetManager::loadMesh(const std::string& name, const std::string& path) {
     if (meshes.count(name)) return meshes[name].get();
 
     std::shared_ptr<Mesh> meshPtr;
     Model model;
-    model.loadModel(path, meshPtr);
+    model.loadModel(name, path, meshPtr);
 
     meshes[name] = std::move(meshPtr);
-    return meshes[name].get();
-}
 
-Mesh* AssetManager::getMesh(const std::string& name) {
     return meshes[name].get();
 }
 
@@ -29,6 +32,7 @@ GLSLProgram* AssetManager::loadShader(const std::string& name,
     shader->linkShaders();
 
     shaders[name] = std::move(shader);
+
     return shaders[name].get();
 }
 

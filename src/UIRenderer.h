@@ -8,14 +8,18 @@
 #include "Scene.h"
 #include "fileLoader.h"
 
+#include "Renderer.h"
+
 namespace Lengine {
 	class UIRenderer {
 	public:
-		UIRenderer(AssetManager& assetMgr, Scene& scn) : assetManager(assetMgr), scene(scn) {}
+		UIRenderer(AssetManager& assetMgr, Scene& scn, Renderer& rndr) :
+			assetManager(assetMgr), scene(scn), renderer(rndr) {}
 		void renderUI(Lengine::Camera3d& camera);
 	private:
 		AssetManager& assetManager;
 		Scene& scene;
+		Renderer& renderer;
 		void addImGuiParameters(const char* label);
 	};
 }

@@ -17,8 +17,10 @@ namespace Lengine {
 		TextureCache textureCache;
 		
 	public:
-        Mesh* loadMesh(const std::string& name, const std::string& path);
-        Mesh* getMesh(const std::string& name);
+        
+		Mesh* loadMesh(const std::string& name, const std::string& path);
+		Mesh* getMesh(const std::string& name);
+
 		GLTexture* getTexture(const std::string& name);
 		GLTexture* loadTexture(const std::string& name, const std::string& path);
 

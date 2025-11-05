@@ -3,8 +3,13 @@
 
 using namespace Lengine;
 
+
 void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
     const auto& entities = scene.getEntities();
+
+    // compute global light once per pass (directional)
+   
+
     for (const auto& entityPtr : entities) {
         Entity* entity = entityPtr.get();
         if (!entity) continue;
@@ -14,27 +19,33 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
         if (!mesh || !material || !material->shader) continue;
 
         GLSLProgram* shader = material->shader;
-
-      
-
         shader->use();
-        // --- Transformation ---
+
+        // transforms
         glm::mat4 model = entity->getTransformMatrix();
         shader->setMat4("model", model);
         shader->setMat4("view", camera.getViewMatrix());
         shader->setMat4("projection", camera.getProjectionMatrix());
         shader->setVec3("cameraPos", camera.getCameraPosition());
-        shader->setInt("state", entity->isSelected ? 1 : 0); 
 
-        // --- Material uniforms ---
-        material->apply();
+        // lighting uniforms (global for this pass)
+        shader->setVec3("lightDir", glm::normalize(sunDir));
+        shader->setVec3("lightColor", sunColor);
+        shader->setVec3("ambient", ambient);
+        shader->setFloat("shininess", shininess);
+        shader->setFloat("specularStrength", specularStrength);
 
-        // --- Draw mesh ---
+        std::cout << "shininess :" << shininess << "\n";
+
+        // material -> set material-specific uniforms + bind textures
+        material->apply(shader);
+
+        // draw
         mesh->draw();
 
         shader->unuse();
     }
-
-    
-    
 }
+
+
+

@@ -36,6 +36,9 @@ namespace Lengine {
 
 		Entity* confirmedSelectedEntity = nullptr;
 
+		SubMesh* selectedSubMesh = nullptr;
+		SubMesh* confirmedSelectedSubMesh = nullptr;
+
 		glm::vec3 dragPlaneNormal = glm::vec3(0, 1, 0);  // XZ plane (Y up)
 		float dragPlaneHeight;
 		glm::vec3 dragStartOffset;

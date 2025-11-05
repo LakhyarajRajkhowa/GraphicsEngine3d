@@ -36,9 +36,23 @@ namespace Lengine {
                     fixCam = !fixCam;
                     moveMode = !moveMode;
                     break;
-
+                   
                 }
             }
+        }
+
+        if (inputManager.isKeyDown(SDLK_UP)) {
+            if(confirmedSelectedEntity != nullptr)
+            confirmedSelectedEntity->getTransform().position.y += 0.01f;
+        }
+        if (inputManager.isKeyDown(SDLK_DOWN)) {
+            if (confirmedSelectedEntity != nullptr)
+            confirmedSelectedEntity->getTransform().position.y -= 0.01f;
+        }
+        if (inputManager.isKeyPressed(SDLK_x)) {
+            if(confirmedSelectedEntity != nullptr)
+                scene.removeEntity(confirmedSelectedEntity->getName())
+                ;
         }
     }
 
@@ -75,12 +89,7 @@ namespace Lengine {
                 if (SDL_BUTTON(SDL_BUTTON_LEFT)) {
                     selectedEntity->getTransform().position = currentHit + dragOffset;
                 }
-                if (inputManager.isKeyDown(SDLK_UP)) {
-                    selectedEntity->getTransform().position.y += 1.0f;
-                }
-                if (inputManager.isKeyDown(SDLK_DOWN)) {
-                    selectedEntity->getTransform().position.y -= 1.0f;
-                }
+                
                 
             }
             else {
@@ -91,38 +100,41 @@ namespace Lengine {
                 for (auto& e : entities) {
                     if (e->getName() == "grid") continue;
 
-                    
-                    float radius = e->getMesh()->getBoundingRadius() * e->getTransform().scale.x;
-                    glm::vec3 centre = e->getTransform().position + e.get()->getMesh()->getLocalCenter() * e->getTransform().scale;
+                    for (auto& sm : e->getMesh()->subMeshes) {
+                        float radius = sm.getBoundingRadius() * e->getTransform().scale.x;
+                        glm::vec3 centre = e->getTransform().position + sm.getLocalCenter() * e->getTransform().scale;
 
-                    if (rayIntersectsSphere(rayOrigin, rayDir, centre, radius)) {
-                        float dist = glm::distance(rayOrigin, centre);
-                        if (dist < closest) {
-                            closest = dist;
-                            selectedEntity = e.get();
+                        if (rayIntersectsSphere(rayOrigin, rayDir, centre, radius)) {
+                            float dist = glm::distance(rayOrigin, centre);
+                            if (dist < closest) {
+                                closest = dist;
+                                selectedEntity = e.get();
 
-                            dragPlaneNormal = glm::vec3(0, 1, 0); 
-                            dragPlaneY = selectedEntity->getTransform().position.y;
+                                dragPlaneNormal = glm::vec3(0, 1, 0);
+                                dragPlaneY = selectedEntity->getTransform().position.y;
 
-                            dragStartPoint = RayPlaneIntersection(
-                                rayOrigin, rayDir,
-                                dragPlaneNormal, dragPlaneY
-                            );
+                                dragStartPoint = RayPlaneIntersection(
+                                    rayOrigin, rayDir,
+                                    dragPlaneNormal, dragPlaneY
+                                );
 
-                            dragOffset = selectedEntity->getTransform().position - dragStartPoint;
+                                dragOffset = selectedEntity->getTransform().position - dragStartPoint;
 
-                            // entity selected
-                            if (mouseLeftReleased) {
-                                if (selectedEntity != nullptr ) {
-                                    confirmSelectedEntity = true;
-                                    if(confirmedSelectedEntity != nullptr)confirmedSelectedEntity->isSelected = false;
-                                    confirmedSelectedEntity = selectedEntity;
-                                    confirmedSelectedEntity->isSelected = true;
-                                }                               
-                                mouseLeftReleased = false;
+                                // entity selected
+                                if (mouseLeftReleased) {
+                                    if (selectedEntity != nullptr) {
+                                        confirmSelectedEntity = true;
+                                        if (confirmedSelectedEntity != nullptr)confirmedSelectedEntity->isSelected = false;
+                                        confirmedSelectedEntity = selectedEntity;
+                                        confirmedSelectedEntity->isSelected = true;
+                                    }
+                                    mouseLeftReleased = false;
+                                }
                             }
                         }
+                        
                     }
+                    
                 }
 
         if(mouseLeftReleased && confirmedSelectedEntity != nullptr) {

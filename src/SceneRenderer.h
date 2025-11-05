@@ -18,21 +18,19 @@ namespace Lengine {
 		void beginFrame(const glm::vec4& clearColor);
 		void renderScene();
 		void endFrame();
+		Renderer renderer;
 
 	private:
 		Camera3d& camera;
 		Scene& scene;
-		Renderer renderer;
 		AssetManager& assetManager;
 
 		std::vector<GLSLProgram> shaders;
 		GLSLProgram defaultShader;
 		Model defaultModel;
-		std::shared_ptr<Mesh> defaultMesh;
-
 
 		GLSLProgram gridShader;
-		std::shared_ptr<Mesh> gridMesh;
+		std::shared_ptr<SubMesh> gridMesh;
 		Model gridModel;
 
 		

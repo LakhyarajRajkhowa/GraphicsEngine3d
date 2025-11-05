@@ -99,4 +99,6 @@ namespace Lengine {
         std::cout << "Loaded OBJ: " << path << std::endl;
           
     }
+
+    
 }

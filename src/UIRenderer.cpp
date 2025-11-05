@@ -27,6 +27,32 @@ namespace Lengine {
 
         ImGui::End();
 
+        ImGui::Begin("Lighting Settings");
+
+        ImGui::Text("Sun Light (Directional)");
+        ImGui::DragFloat3("Direction", &renderer.sunDir.x, 0.01f, -1.0f, 1.0f);
+        ImGui::ColorEdit3("Sun Color", &renderer.sunColor.x);
+
+        ImGui::Separator();
+
+        ImGui::Text("Ambient Light");
+        ImGui::ColorEdit3("Ambient", &renderer.ambient.x);
+
+        ImGui::Separator();
+        ImGui::Text("Specular Settings");
+        ImGui::SliderFloat("Shininess", &renderer.shininess, 0.0f, 5.0f);
+        ImGui::SliderFloat("Spec Strength", &renderer.specularStrength, 0.0f, 2.0f);
+
+        ImGui::Separator();
+
+
+        if (ImGui::Button("Normalize Direction")) {
+            renderer.sunDir = glm::normalize(renderer.sunDir);
+        }
+
+        ImGui::End();
+
+
         // ---------------- Load File Window ----------------
         ImGui::SetNextWindowPos(ImVec2(500, 50));
         ImGui::SetNextWindowBgAlpha(0.35f);
@@ -73,47 +99,117 @@ namespace Lengine {
 
         if (ImGui::BeginPopupModal("Add New Model", NULL, ImGuiWindowFlags_AlwaysAutoResize))
         {
+            // ---------------- Model Name ----------------
             ImGui::Text("Enter Model Name:");
             ImGui::InputText("##name", modelName, IM_ARRAYSIZE(modelName));
 
             ImGui::Separator();
 
-            ImGui::Text("Selected File:");
-            ImGui::TextWrapped("%s", (strlen(modelPath) > 0 ? modelPath : "<none>"));
+            // ---------------- Model File ----------------
+            ImGui::Text("Selected Model:");
+            ImGui::TextWrapped("%s", strlen(modelPath) > 0 ? modelPath : "");
 
-            if (ImGui::Button("Select File"))
+            if (ImGui::Button("Select Model (.obj)"))
             {
                 const char* filters[] = { "*.obj" };
-
                 const char* path = tinyfd_openFileDialog(
                     "Select OBJ File", "", 1, filters, "OBJ Files", 0
                 );
-
-                if (path)
-                {
-                    strcpy(modelPath, path);
-                }
+                if (path) strcpy(modelPath, path);
             }
 
             ImGui::Separator();
 
+            // ------------------------------------------------
+            // OPTIONAL TEXTURE
+            // ------------------------------------------------
+            static char texturePath[512] = "";
+            ImGui::Text("Texture (Optional):");
+            ImGui::TextWrapped("%s", strlen(texturePath) > 0 ? texturePath : "");
+
+            if (ImGui::Button("Select Texture (.png)"))
+            {
+                const char* filters[] = { "*.png" };
+                const char* path = tinyfd_openFileDialog(
+                    "Select Texture File", "", 1, filters, "Image Files", 0
+                );
+                if (path) strcpy(texturePath, path);
+            }
+
+            ImGui::Separator();
+
+            // ------------------------------------------------
+            // OPTIONAL SHADER
+            // ------------------------------------------------
+            static char vertShaderPath[512] = "";
+            static char fragShaderPath[512] = "";
+
+            ImGui::Text("Shader (Optional):");
+
+            ImGui::Text("Vertex Shader:");
+            ImGui::TextWrapped("%s", strlen(vertShaderPath) > 0 ? vertShaderPath :"");
+            if (ImGui::Button("Select Vertex Shader (.vert)"))
+            {
+                const char* filters[] = { "*.vert", "*.vs" };
+                const char* path = tinyfd_openFileDialog("Select Vertex Shader", "", 2, filters, "Vertex Shaders", 0);
+                if (path) strcpy(vertShaderPath, path);
+            }
+
+            ImGui::Text("Fragment Shader:");
+            ImGui::TextWrapped("%s", strlen(fragShaderPath) > 0 ? fragShaderPath : "");
+            if (ImGui::Button("Select Fragment Shader (.frag)"))
+            {
+                const char* filters[] = { "*.frag", "*.fs" };
+                const char* path = tinyfd_openFileDialog("Select Fragment Shader", "", 2, filters, "Fragment Shaders", 0);
+                if (path) strcpy(fragShaderPath, path);
+            }
+
+            ImGui::Separator();
+
+            // ------------------------------------------------
+            // CREATE ENTITY
+            // ------------------------------------------------
             if (ImGui::Button("Create"))
             {
-                if (strlen(modelPath) > 0 && strlen(modelName) > 0)
+                if (strlen(modelName) > 0 && strlen(modelPath) > 0)
                 {
-                    scene.createEntity(
-                        modelName,
-                        assetManager.loadMesh(modelName, modelPath),
-                        assetManager.loadShader("default",
-                            "../Shaders/default.vert",
-                            "../Shaders/default.frag")
-                    );
+                    // Load mesh (required)
+                    auto mesh = assetManager.loadMesh(modelName, modelPath);
+
+                    // Load shader (optional)
+                    GLSLProgram* shader;
+                    if (strlen(vertShaderPath) > 0 && strlen(fragShaderPath) > 0)
+                    {
+                        shader = assetManager.loadShader(
+                            modelName,
+                            vertShaderPath,
+                            fragShaderPath
+                        );
+                    }
+                    else
+                    {
+                        shader = assetManager.loadShader(
+                            "default",
+                            "../assets/Shaders/lightning.vert",
+                            "../assets/Shaders/lightning.frag"
+                        );
+                    }
+
+                    // Load texture (optional)
+                    GLTexture* texture = {};
+                    if (strlen(texturePath) > 0)
+                    {
+                        texture = assetManager.loadTexture(modelName, texturePath);
+                    }
+
+                    // Create entity
+                    scene.createEntity(modelName, mesh, shader, texture);
 
                     ImGui::CloseCurrentPopup();
                 }
                 else
                 {
-                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Please fill both name and file.");
+                    ImGui::TextColored(ImVec4(1, 0, 0, 1), "Model name and file required!");
                 }
             }
 
@@ -125,13 +221,13 @@ namespace Lengine {
             }
 
             ImGui::EndPopup();
+        
+
         }
         ImGui::End();
 
       
-      
-
-   
+       
 
     }
 }
