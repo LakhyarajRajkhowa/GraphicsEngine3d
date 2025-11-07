@@ -1,41 +1,27 @@
 cmake_minimum_required(VERSION 3.10)
-project(Lengine LANGUAGES CXX CUDA)
+project(Lengine LANGUAGES CXX)
 
-# ────────────────────────────────────────────────
-#  Basic setup
-# ────────────────────────────────────────────────
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # ────────────────────────────────────────────────
-#  Source and header file discovery
-# ────────────────────────────────────────────────
-file(GLOB_RECURSE CPP_HEADER_FILES "src/*.h")
-file(GLOB_RECURSE CPP_SOURCES "src/*.cpp")
-
-# ────────────────────────────────────────────────
-#  Output directories (/bin for all configs)
+# Output dirs
 # ────────────────────────────────────────────────
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin)
 
-foreach(OUTPUTCONFIG IN LISTS CMAKE_CONFIGURATION_TYPES)
-    string(TOUPPER ${OUTPUTCONFIG} OUTPUTCONFIG_UPPER)
-    set(CMAKE_RUNTIME_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UPPER} ${CMAKE_SOURCE_DIR}/bin)
-    set(CMAKE_LIBRARY_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UPPER} ${CMAKE_SOURCE_DIR}/bin)
-    set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY_${OUTPUTCONFIG_UPPER} ${CMAKE_SOURCE_DIR}/bin)
-endforeach()
-
 # ────────────────────────────────────────────────
-#  Third-party directories (SDL2 / ImGui / CUDA)
+# Third Party include dirs
 # ────────────────────────────────────────────────
-set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/include/imgui)
-set(SDL2_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/include/SDL2)
+set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/src/external/imgui)
+set(SDL2_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/external/SDL2)
+set(GL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/external/GL)
+set(GLM_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/external/glm)
 set(SDL2_LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
 # ────────────────────────────────────────────────
-#  ImGui source files
+# ImGui source files
 # ────────────────────────────────────────────────
 set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui.cpp
@@ -44,46 +30,98 @@ set(IMGUI_SOURCES
     ${IMGUI_DIR}/imgui_tables.cpp
     ${IMGUI_DIR}/imgui_demo.cpp
     ${IMGUI_DIR}/backends/imgui_impl_sdl2.cpp
-    ${IMGUI_DIR}/backends/imgui_impl_sdlrenderer2.cpp
     ${IMGUI_DIR}/backends/imgui_impl_opengl3.cpp
 )
 
 
 # ────────────────────────────────────────────────
-#  Source grouping for Visual Studio filters
+# Source Collection (lowercase folder structure)
 # ────────────────────────────────────────────────
-source_group("Header Files\\C++" FILES ${CPP_HEADER_FILES})
-source_group("Source Files\\C++" FILES ${CPP_SOURCES})
-source_group("External\\ImGui" FILES ${IMGUI_SOURCES})
-source_group("Lengine\\Headers" FILES ${LENGINE_HEADER_FILES})
-source_group("Lengine\\Source" FILES ${LENGINE_SOURCES})
+
+file(GLOB_RECURSE CORE_SRC
+    "src/core/*.cpp"
+    "src/core/*.h"
+)
+
+file(GLOB_RECURSE PLATFORM_SRC
+    "src/platform/*.cpp"
+    "src/platform/*.h"
+)
+
+file(GLOB_RECURSE GRAPHICS_SRC
+    "src/graphics/*.cpp"
+    "src/graphics/*.h"
+)
+
+file(GLOB_RECURSE RESOURCES_SRC
+    "src/resources/*.cpp"
+    "src/resources/*.h"
+)
+
+file(GLOB_RECURSE SCENE_SRC
+    "src/scene/*.cpp"
+    "src/scene/*.h"
+)
+
+file(GLOB_RECURSE UI_SRC
+    "src/ui/*.cpp"
+    "src/ui/*.h"
+)
+
+file(GLOB_RECURSE EXTERNAL_SRC
+    "src/external/picopng.h"
+    "src/external/tinyfiledialogs.h"
+    "src/external/picopng.cpp"
+    "src/external/tinyfiledialogs.c"
+    "src/external/json.hpp"
+)
+
+set(MAIN_SRC src/main.cpp)
 
 # ────────────────────────────────────────────────
-#  Create the executable
+# Visual Studio Filters
+# ────────────────────────────────────────────────
+source_group("core" FILES ${CORE_SRC})
+source_group("platform" FILES ${PLATFORM_SRC})
+source_group("graphics" FILES ${GRAPHICS_SRC})
+source_group("resources" FILES ${RESOURCES_SRC})
+source_group("scene" FILES ${SCENE_SRC})
+source_group("ui" FILES ${UI_SRC})
+source_group("external" FILES ${EXTERNAL_SRC})
+
+
+# ────────────────────────────────────────────────
+# Build Executable
 # ────────────────────────────────────────────────
 add_executable(${PROJECT_NAME}
-    ${CPP_HEADER_FILES}
-    ${CPP_SOURCES}
+    ${MAIN_SRC}
+    ${CORE_SRC}
+    ${PLATFORM_SRC}
+    ${GRAPHICS_SRC}
+    ${RESOURCES_SRC}
+    ${SCENE_SRC}
+    ${UI_SRC}
+    ${EXTERNAL_SRC}
     ${IMGUI_SOURCES}
 )
 
 # ────────────────────────────────────────────────
-#  Include directories
+# Include dirs
 # ────────────────────────────────────────────────
 target_include_directories(${PROJECT_NAME} PRIVATE
-    ${CMAKE_SOURCE_DIR}/include
+    ${CMAKE_SOURCE_DIR}/src
+    ${CMAKE_SOURCE_DIR}/src/external
+    ${GL_INCLUDE_DIR}
+    ${GLM_INCLUDE_DIR}
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${SDL2_INCLUDE_DIR}
-    
 )
 
 # ────────────────────────────────────────────────
-#  Link directories and libraries
+# Link libraries
 # ────────────────────────────────────────────────
-target_link_directories(${PROJECT_NAME} PRIVATE 
-    ${SDL2_LIB_DIR}
-)
+target_link_directories(${PROJECT_NAME} PRIVATE ${SDL2_LIB_DIR})
 
 target_link_libraries(${PROJECT_NAME}
     SDL2main
@@ -91,8 +129,3 @@ target_link_libraries(${PROJECT_NAME}
     glew32
     opengl32
 )
-
-# ────────────────────────────────────────────────
-#  (Optional) Compiler warnings
-# ────────────────────────────────────────────────
-# target_compile_options(${PROJECT_NAME} PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/W4 /WX>)
