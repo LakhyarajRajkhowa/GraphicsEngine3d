@@ -19,10 +19,11 @@ namespace Lengine {
          glm::mat4 getProjectionMatrix();
          glm::vec3 getRightVector();
          glm::vec3 getForwardVector();
-        void update(const float& deltaTime, const glm::vec2& mouseCoords, const bool& fixCam);
+        void update(const float& deltaTime, const glm::vec2& mouseCoords);
         void moveMouse( float xoffset,  float yoffset);
         void moveKeyboard(const float& speed);
 
+        bool isFixed = true;
 
     private:
         glm::vec3 position;

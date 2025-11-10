@@ -3,54 +3,25 @@
 
 namespace Lengine {
     void InputHandler::handleMouseResponse() {
-        if (!fixCam) {
-            SDL_SetRelativeMouseMode(SDL_TRUE);
-            SDL_ShowCursor(SDL_ENABLE);
-        }
-        else {
-            SDL_SetRelativeMouseMode(SDL_FALSE);
-        }
 
-        inputManager.updateMouseCoords();
-        glm::vec2 mouseCoords = inputManager.getMouseCoords();
 
-        int x, y;
-        SDL_GetRelativeMouseState(&x, &y);
-        glm::vec2 relativeMouseCoords = { x,y };
-        moveEntity(mouseCoords);
-        camera.update(0.1f, relativeMouseCoords, fixCam);
 
     }
 
     void InputHandler::handleKeyboardResponse() {
 
-        if (ImGui::GetIO().WantCaptureKeyboard)
-            return;
-        for (SDL_Keycode key : { SDLK_ESCAPE, SDLK_c}) {
-            if (inputManager.isKeyPressed(key)) {
-                switch (key) {
-                case SDLK_ESCAPE:
-                    isRunning = false;
-                    break;
-                case SDLK_c:
-                    fixCam = !fixCam;
-                    moveMode = !moveMode;
-                    break;
-                   
-                }
-            }
-        }
+      
 
         if (inputManager.isKeyDown(SDLK_UP)) {
-            if(confirmedSelectedEntity != nullptr)
-            confirmedSelectedEntity->getTransform().position.y += 0.01f;
+            if (confirmedSelectedEntity != nullptr)
+                confirmedSelectedEntity->getTransform().position.y += 0.01f;
         }
         if (inputManager.isKeyDown(SDLK_DOWN)) {
             if (confirmedSelectedEntity != nullptr)
-            confirmedSelectedEntity->getTransform().position.y -= 0.01f;
+                confirmedSelectedEntity->getTransform().position.y -= 0.01f;
         }
         if (inputManager.isKeyPressed(SDLK_x)) {
-            if(confirmedSelectedEntity != nullptr)
+            if (confirmedSelectedEntity != nullptr)
                 scene.removeEntity(confirmedSelectedEntity->getName())
                 ;
         }
@@ -60,9 +31,7 @@ namespace Lengine {
     void InputHandler::moveEntity(glm::vec2 mouseCoords) {
         int mouseX = mouseCoords.x, mouseY = mouseCoords.y;
 
-        if (!moveMode) {
-            return;
-        }
+       
 
         glm::vec3 rayDir = getRayFromMouse(
             mouseX,
@@ -89,8 +58,8 @@ namespace Lengine {
                 if (SDL_BUTTON(SDL_BUTTON_LEFT)) {
                     selectedEntity->getTransform().position = currentHit + dragOffset;
                 }
-                
-                
+
+
             }
             else {
 
@@ -131,17 +100,17 @@ namespace Lengine {
                                 }
                             }
                         }
-                        
+
                     }
-                    
+
                 }
 
-        if(mouseLeftReleased && confirmedSelectedEntity != nullptr) {
-            confirmedSelectedEntity->isSelected = false;
-            confirmSelectedEntity = false;
-            confirmedSelectedEntity = nullptr;
-            
-        }
+                if (mouseLeftReleased && confirmedSelectedEntity != nullptr) {
+                    confirmedSelectedEntity->isSelected = false;
+                    confirmSelectedEntity = false;
+                    confirmedSelectedEntity = nullptr;
+
+                }
 
             }
         }
@@ -149,36 +118,10 @@ namespace Lengine {
 
 
 
+    void InputHandler::processEvents(const SDL_Event& event) {
 
-    void InputHandler::handleInputs() {
-        inputManager.update();
-        SDL_Event event;
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-
-            switch (event.type) {
-            case SDL_QUIT:
-                isRunning = false;
-                break;
-            case SDL_KEYDOWN:
-                inputManager.pressKey(event.key.keysym.sym);
-                break;
-            case SDL_KEYUP:
-                inputManager.releaseKey(event.key.keysym.sym);
-                break;
-            case SDL_MOUSEBUTTONDOWN:
-                if (event.button.button == SDL_BUTTON_LEFT)
-                    mouseLeftDown = true;
-                break;
-
-            case SDL_MOUSEBUTTONUP:
-                if (event.button.button == SDL_BUTTON_LEFT) {
-                    mouseLeftDown = false;
-                    mouseLeftReleased = true;  
-                }
-                break;
-
-            }
+        switch (event.type) {
+        
 
             if (event.type == SDL_MOUSEWHEEL) {
 
@@ -192,20 +135,111 @@ namespace Lengine {
                 }
                 else if (event.wheel.y < 0) {
                     if (confirmSelectedEntity && confirmedSelectedEntity != nullptr) {
-                        confirmedSelectedEntity->getTransform().scale -= 
-                            (confirmedSelectedEntity->getTransform().scale.x < 0.1f )?
-                                (confirmedSelectedEntity->getTransform().scale.x < 0.01f) ?
-                                    glm::vec3(0.001f):glm::vec3(0.01f):glm::vec3(0.1f);
+                        confirmedSelectedEntity->getTransform().scale -=
+                            (confirmedSelectedEntity->getTransform().scale.x < 0.1f) ?
+                            (confirmedSelectedEntity->getTransform().scale.x < 0.01f) ?
+                            glm::vec3(0.001f) : glm::vec3(0.01f) : glm::vec3(0.1f);
                     }
                 }
             }
+
+        }
+    }
+
+    void InputHandler::handleInputs(
+        ImGuiLayer& imguiLayer,
+        const ViewportPanel& viewportPanel,
+        EditorLayer& editorLayer)
+    {
+
+        bool imguiCapturesMouse = imguiLayer.wantsCaptureMouse();
+        bool imguiCapturesKeyboard = imguiLayer.wantsCaptureKeyboard();
+
+        bool viewportFocused = viewportPanel.IsViewportFocused();
+        bool viewportHovered = viewportPanel.IsViewportHovered();
+        SDL_Event event;
+        while (SDL_PollEvent(&event)) {
+
+            // 1. Send all events to ImGui
+            imguiLayer.processEvent(event);
+            editorLayer.OnEvent(event);
+            // Case 1: move camera
+            if (camera.isFixed == false) {
+                if (viewportFocused)
+                    processEvents(event);
+                continue;
+            }
+
+            // 2. Engine handles only if ImGui does NOT want them
+            if (camera.isFixed)
+            {
+                // ImGui wants event? → give event ONLY to ImGui
+                if (imguiCapturesMouse || imguiCapturesKeyboard)
+                    continue;
+
+                // Viewport hovered → object selection/manipulation
+                if (viewportHovered)
+                    processEvents(event);
+
+                // Outside viewport → only UI gets input
+                continue;
+            }
+        }
+        // ---- MODE 1: CAMERA MODE ----
+        if (!(camera.isFixed))
+        {
+            if (viewportFocused)
+            {
+                // camera movement, mouse delta, WASD
+                inputManager.updateMouseCoords();
+                glm::vec2 mouseCoords = inputManager.getMouseCoords();
+
+                int x, y;
+                SDL_GetRelativeMouseState(&x, &y);
+                glm::vec2 relativeMouseCoords = { x,y };
+                camera.update(0.1f, relativeMouseCoords);
+            }
+
         }
 
 
+        // ---- MODE 2: EDITOR MODE ----
+        if (camera.isFixed)
+        {
+            if (!imguiCapturesKeyboard && !imguiCapturesMouse)
+            {
+                if (viewportHovered)
+                {
+                   
 
-        handleKeyboardResponse();
-        handleMouseResponse();
+                    inputManager.updateMouseCoords();
+                    glm::vec2 mouseCoords = inputManager.getMouseCoords();
+                    editorLayer.TrySelectEntity(mouseCoords);
+                }
+            }
+
+            // outside viewport → nothing for engine
+        }
+        
+        if (camera.isFixed == false)
+        {
+            // Enter camera freelook mode
+            ImGui::SetWindowFocus("Viewport");
+
+
+
+            SDL_ShowCursor(SDL_DISABLE);
+            SDL_SetRelativeMouseMode(SDL_TRUE);  // lock mouse inside window
+        }
+        else
+        {
+            // Enter editor mode
+            SDL_SetRelativeMouseMode(SDL_FALSE);
+            SDL_ShowCursor(SDL_ENABLE);
+        }
+        
     }
+
 
 
 }

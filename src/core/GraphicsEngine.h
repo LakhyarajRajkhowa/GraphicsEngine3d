@@ -15,6 +15,8 @@
 
 #include "../ui/UIRenderer.h"
 
+#include "../editor/imgui/ImguiLayer.h"
+#include "../editor/EditorLayer.h"
 
 
 namespace Lengine {
@@ -34,7 +36,17 @@ namespace Lengine {
 		Lengine::SceneRenderer sceneRenderer;
 		Lengine::UIRenderer UI;
 
+		ImGuiLayer imguiLayer;
+		EditorLayer* editorLayer = nullptr;
+		LogBuffer logBuffer;
+		OutputRedirect* redirect = nullptr;
+
+	
 		bool isRunning = true;
+
+		
 		void initSystems();
+		void mainLoop();
+	
 	};
 }

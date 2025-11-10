@@ -10,8 +10,8 @@
 #include "../platform/Window.h"
 #include "../scene/Scene.h"
 
-
-
+#include "../editor/imgui/ImguiLayer.h"
+#include "../editor/EditorLayer.h"
 
 namespace Lengine {
 	class InputHandler {
@@ -23,7 +23,11 @@ namespace Lengine {
 			moveMode = false;
 		}
 
-		void handleInputs();
+		void handleInputs(ImGuiLayer& imguiLayer, const ViewportPanel& viewport, EditorLayer& editorLayer);
+		
+		void processEvents(const SDL_Event& event);
+		void moveEntity(glm::vec2 mouseCooords);
+
 	private:
 		Camera3d& camera;
 		InputManager& inputManager;
@@ -57,6 +61,5 @@ namespace Lengine {
 		void handleMouseResponse();
 		void handleKeyboardResponse();
 
-		void moveEntity(glm::vec2 mouseCooords);
 	};
 }

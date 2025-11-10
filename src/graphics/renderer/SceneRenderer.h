@@ -17,7 +17,7 @@ namespace Lengine {
 
 		void init();
 		void initScene();
-		void beginFrame(const glm::vec4& clearColor);
+		void clearFrame(const glm::vec4& clearColor);
 		void renderScene();
 		void endFrame();
 		Renderer renderer;

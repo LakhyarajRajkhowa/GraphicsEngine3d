@@ -42,6 +42,10 @@ file(GLOB_RECURSE CORE_SRC
     "src/core/*.cpp"
     "src/core/*.h"
 )
+file(GLOB_RECURSE EDITOR_SRC
+    "src/editor/*.cpp"
+    "src/editor/*.h"
+)
 
 file(GLOB_RECURSE PLATFORM_SRC
     "src/platform/*.cpp"
@@ -52,6 +56,11 @@ file(GLOB_RECURSE GRAPHICS_SRC
     "src/graphics/*.cpp"
     "src/graphics/*.h"
 )
+file(GLOB_RECURSE LOGGING_SRC
+    "src/logging/*.cpp"
+    "src/logging/*.h"
+)
+
 
 file(GLOB_RECURSE RESOURCES_SRC
     "src/resources/*.cpp"
@@ -81,13 +90,18 @@ set(MAIN_SRC src/main.cpp)
 # ────────────────────────────────────────────────
 # Visual Studio Filters
 # ────────────────────────────────────────────────
-source_group("core" FILES ${CORE_SRC})
-source_group("platform" FILES ${PLATFORM_SRC})
-source_group("graphics" FILES ${GRAPHICS_SRC})
-source_group("resources" FILES ${RESOURCES_SRC})
-source_group("scene" FILES ${SCENE_SRC})
-source_group("ui" FILES ${UI_SRC})
-source_group("external" FILES ${EXTERNAL_SRC})
+source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX "" FILES
+    ${CORE_SRC}
+    ${EDITOR_SRC}
+    ${PLATFORM_SRC}
+    ${GRAPHICS_SRC}
+    ${LOGGING_SRC}
+    ${RESOURCES_SRC}
+    ${SCENE_SRC}
+    ${UI_SRC}
+    ${EXTERNAL_SRC}
+)
+
 
 
 # ────────────────────────────────────────────────
@@ -96,8 +110,10 @@ source_group("external" FILES ${EXTERNAL_SRC})
 add_executable(${PROJECT_NAME}
     ${MAIN_SRC}
     ${CORE_SRC}
+    ${EDITOR_SRC}
     ${PLATFORM_SRC}
     ${GRAPHICS_SRC}
+    ${LOGGING_SRC}
     ${RESOURCES_SRC}
     ${SCENE_SRC}
     ${UI_SRC}

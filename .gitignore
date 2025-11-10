@@ -4,3 +4,4 @@ build/
 # Ignore Windows executables
 *.exe
 *.pdb
+*.ini

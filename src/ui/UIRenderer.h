@@ -8,6 +8,7 @@
 #include "../resources/fileLoader.h"
 #include "../resources/AssetManager.h"
 #include "../scene/Scene.h"
+#include "../graphics/renderer/FrameBuffer.h"
 
 
 namespace Lengine {
@@ -15,7 +16,7 @@ namespace Lengine {
 	public:
 		UIRenderer(AssetManager& assetMgr, Scene& scn, Renderer& rndr) :
 			assetManager(assetMgr), scene(scn), renderer(rndr) {}
-		void renderUI(Lengine::Camera3d& camera);
+		void renderUI(Lengine::Camera3d& camera, Framebuffer& frameBuffer);
 	private:
 		AssetManager& assetManager;
 		Scene& scene;

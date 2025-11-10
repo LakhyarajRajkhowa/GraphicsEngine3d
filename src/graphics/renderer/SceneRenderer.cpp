@@ -11,7 +11,7 @@ namespace Lengine {
         
     }
 
-    void SceneRenderer::beginFrame(const glm::vec4& clearColor) {
+    void SceneRenderer::clearFrame(const glm::vec4& clearColor) {
         glClearColor(clearColor.r, clearColor.g, clearColor.b, clearColor.a);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     }
@@ -36,7 +36,7 @@ namespace Lengine {
         gizmoRenderer.drawGizmoGrid();
         renderer.renderScene(scene, camera);
 
-        if(scene.showBoundingSphere) 
+      
             gizmoRenderer.drawGizmoSpheres();
 
     }

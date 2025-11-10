@@ -1,11 +1,13 @@
-#include "GraphicsEngine.h"
+﻿#include "GraphicsEngine.h"
 
 namespace Lengine {
 
 	GraphicsEngine::GraphicsEngine() :
 		sceneRenderer(camera, scene, assetManager),
 		inputHandler(camera, inputManager, scene, window, isRunning),
-		UI(assetManager, scene, sceneRenderer.renderer)
+		UI(assetManager, scene, sceneRenderer.renderer),
+		imguiLayer(inputManager, isRunning)
+		
 	{
 
 	}
@@ -28,9 +30,20 @@ namespace Lengine {
 			settings.windowHeight,
 			settings.windowMode
 		);
-
+		imguiLayer.init(
+			window.getWindow(),
+			window.getGlContext()
+		);
 		
-
+		redirect = new OutputRedirect(logBuffer);
+		editorLayer = new EditorLayer(
+			logBuffer,
+			scene,
+			camera,
+			inputManager,
+			window
+			
+		);
 		camera.init(
 			settings.windowWidth,
 			settings.windowHeight,
@@ -41,21 +54,42 @@ namespace Lengine {
 
 		sceneRenderer.init();
 		sceneRenderer.initScene();
+		
+		mainLoop();
+
+		imguiLayer.shutdown();
+		window.quitWindow();
+	}
+
+	void GraphicsEngine::mainLoop() {
 		isRunning = true;
+		ViewportPanel& viewportPanel = editorLayer->GetViewportPanel();
 
 		while (isRunning) {
 
-			inputHandler.handleInputs();
-			sceneRenderer.beginFrame({ 0.0f, 0.0f, 0.0f, 1.0f });
-			sceneRenderer.renderScene();
-			UI.renderUI(camera);
+			inputManager.update();
+			inputHandler.handleInputs(imguiLayer, viewportPanel, *editorLayer);
+			editorLayer->OnUpdate();
+			imguiLayer.beginFrame();
 
-			sceneRenderer.endFrame();
+			//  Framebuffer captures the frame of the game screen
+			viewportPanel.GetFramebuffer().Bind();
+			sceneRenderer.clearFrame({ 0.0f, 0.0f, 0.0f, 1.0f });
+			sceneRenderer.renderScene();
+			viewportPanel.GetFramebuffer().Unbind();
+
+			editorLayer->OnImGuiRender();
+
+
+			imguiLayer.endFrame();
+
 			window.swapBuffer();
 
 		}
-
-
+		
 	}
+	
+
 
 }
+

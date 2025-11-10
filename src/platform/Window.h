@@ -27,10 +27,12 @@ namespace Lengine {
 		int getScreenHeight() { return _screenHeight; }
 
 		SDL_Window* getWindow() { return _sdlWindow; }
+		SDL_GLContext getGlContext() { return _glContext;  }
 
 	private:
 		
 		SDL_Window* _sdlWindow;
+		SDL_GLContext _glContext = nullptr;
 		int _screenWidth, _screenHeight;
 
 	};
