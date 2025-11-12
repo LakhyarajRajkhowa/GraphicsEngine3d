@@ -10,24 +10,27 @@ namespace Lengine {
     public:
         SceneHierarchyPanel() = default;
 
-        void OnImGuiRender(Camera3d& camera) {
+        void OnImGuiRender(Camera3d& camera, Scene& scene) {
             ImGui::Begin("Hierarchy");
 
             if (ImGui::Button(camera.isFixed ? "Fix Camera: ON" : "Fix Camera: OFF"))
-            {
                 camera.isFixed = !camera.isFixed;
-            }
-            // Dummy example items
+
+            ImGui::Separator();
             ImGui::Text("Scene Objects:");
             ImGui::Separator();
 
-            for (int i = 0; i < 10; i++) {
-                std::string name = "Entity " + std::to_string(i);
-                ImGui::Selectable(name.c_str());
+            auto& entities = scene.getEntities(); 
+
+            for (auto& entity : entities)
+            {
+                ImGui::BulletText("%s", entity->getName().c_str());
             }
 
             ImGui::End();
         }
+
+
     };
 
 }

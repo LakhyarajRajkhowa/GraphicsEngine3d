@@ -29,8 +29,12 @@ namespace Lengine {
 		bool wantsCaptureMouse() const;
 		bool wantsCaptureKeyboard() const;
 
+		// Theme
+		void SetModernDarkTheme();
 	private:
 		InputManager& inputManager;
 		bool& isRunning;
+
+
 	};
 }

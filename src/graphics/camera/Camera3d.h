@@ -14,8 +14,10 @@ namespace Lengine {
         void init(float width, float height, InputManager* inputManager, glm::vec3 cameraPos, float FOV);
          const glm::vec3& getCameraPosition() { return position; }
          const glm::vec3& getCameraDirection() { return front; }
-
+         void setAspectRatio(float aspect);
+         float getAspectRatio() const { return aspectRatio; }
          glm::mat4 getViewMatrix();
+         void setProjectionMatrix(glm::vec4 projection);
          glm::mat4 getProjectionMatrix();
          glm::vec3 getRightVector();
          glm::vec3 getForwardVector();
@@ -29,9 +31,11 @@ namespace Lengine {
         glm::vec3 position;
         glm::vec3 front;
         glm::vec3 up;
+        glm::mat4 projectionMatrix;
         float yaw, pitch;
         float fov;
         float aspectRatio;
+        float nearPlane, farPlane;
 
         glm::vec3 direction;
         InputManager* _inputManager;

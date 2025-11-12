@@ -17,6 +17,9 @@ namespace Lengine {
 
         const  Entity* getEntityByName(const std::string& name) const;
         const std::vector<std::unique_ptr<Entity>>& getEntities() const { return entities; }
+        std::vector<std::unique_ptr<Entity>>& Scene::getEntities() {
+            return entities;
+        }
         void removeEntity(const std::string& name);
         void setDefaults(Mesh* mesh, GLSLProgram* shader) {
             defaultMesh = mesh;

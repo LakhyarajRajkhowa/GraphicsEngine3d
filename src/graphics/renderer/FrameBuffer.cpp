@@ -3,7 +3,7 @@
 
 namespace Lengine {
 
-    Framebuffer::Framebuffer(int width, int height)
+    Framebuffer::Framebuffer(float width, float height)
         : m_Width(width), m_Height(height)
     {
         Create();
@@ -73,13 +73,12 @@ namespace Lengine {
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
     }
 
-    void Framebuffer::Resize(int width, int height) {
+    void Framebuffer::Resize(float width, float height) {
         if (width == 0 || height == 0)
             return;
 
         m_Width = width;
         m_Height = height;
-
         Create();
     }
 

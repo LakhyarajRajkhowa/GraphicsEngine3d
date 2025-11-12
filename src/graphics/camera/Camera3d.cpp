@@ -1,4 +1,4 @@
-#include "Camera3d.h"
+﻿#include "Camera3d.h"
 
 
 namespace Lengine {
@@ -12,6 +12,10 @@ namespace Lengine {
         position = cameraPos;
         yaw = -90.0f;
         pitch = 0.0f;
+        nearPlane = 0.50f;
+        farPlane = 1000.0f;
+        up = glm::vec3(0.0f, 1.0f, 0.0f);
+
         fov = FOV;
         aspectRatio = width / height;
         _inputManager = inputManager;
@@ -20,17 +24,20 @@ namespace Lengine {
         direction.y = sin(glm::radians(pitch));
         direction.z = sin(glm::radians(yaw)) * cos(glm::radians(pitch));
         front = glm::normalize(direction);
-
-        up = glm::vec3(0.0f, 1.0f, 0.0f);
+        projectionMatrix = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
     }
 
-    
+    void Camera3d::setAspectRatio(float aspect)
+    {
+        aspectRatio = aspect;   
+        projectionMatrix = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
+    }
     glm::mat4 Camera3d::getViewMatrix() {
         return glm::lookAt(position, position + front, up);
     }
 
     glm::mat4 Camera3d::getProjectionMatrix() {
-        return glm::perspective(glm::radians(fov), aspectRatio, 0.50f, 1000.0f);
+        return projectionMatrix;
     }
     glm::vec3 Camera3d::getRightVector() {
         return glm::normalize(glm::cross(front, up));

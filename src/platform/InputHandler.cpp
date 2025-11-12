@@ -1,5 +1,5 @@
 ﻿#include "InputHandler.h"
-
+#include <algorithm>
 
 namespace Lengine {
     void InputHandler::handleMouseResponse() {
@@ -24,95 +24,6 @@ namespace Lengine {
             if (confirmedSelectedEntity != nullptr)
                 scene.removeEntity(confirmedSelectedEntity->getName())
                 ;
-        }
-    }
-
-    // this shit is a mess!
-    void InputHandler::moveEntity(glm::vec2 mouseCoords) {
-        int mouseX = mouseCoords.x, mouseY = mouseCoords.y;
-
-       
-
-        glm::vec3 rayDir = getRayFromMouse(
-            mouseX,
-            mouseY,
-            window.getScreenWidth(),
-            window.getScreenHeight(),
-            camera.getViewMatrix(),
-            camera.getProjectionMatrix()
-        );
-
-        glm::vec3 rayOrigin = camera.getCameraPosition();
-        const auto& entities = scene.getEntities();
-
-        if (!SDL_GetMouseState(nullptr, nullptr)) {
-            selectedEntity = nullptr;
-        }
-        else {
-            if (selectedEntity != nullptr) {
-                glm::vec3 currentHit = RayPlaneIntersection(
-                    rayOrigin, rayDir,
-                    dragPlaneNormal, dragPlaneY
-                );
-
-                if (SDL_BUTTON(SDL_BUTTON_LEFT)) {
-                    selectedEntity->getTransform().position = currentHit + dragOffset;
-                }
-
-
-            }
-            else {
-
-
-                float closest = 999999.0f;
-
-                for (auto& e : entities) {
-
-                    for (auto& sm : e->getMesh()->subMeshes) {
-                        float radius = sm.getBoundingRadius() * e->getTransform().scale.x;
-                        glm::vec3 centre = e->getTransform().position + sm.getLocalCenter() * e->getTransform().scale;
-
-                        if (rayIntersectsSphere(rayOrigin, rayDir, centre, radius)) {
-                            float dist = glm::distance(rayOrigin, centre);
-                            if (dist < closest) {
-                                closest = dist;
-                                selectedEntity = e.get();
-
-                                dragPlaneNormal = glm::vec3(0, 1, 0);
-                                dragPlaneY = selectedEntity->getTransform().position.y;
-
-                                dragStartPoint = RayPlaneIntersection(
-                                    rayOrigin, rayDir,
-                                    dragPlaneNormal, dragPlaneY
-                                );
-
-                                dragOffset = selectedEntity->getTransform().position - dragStartPoint;
-
-                                // entity selected
-                                if (mouseLeftReleased) {
-                                    if (selectedEntity != nullptr) {
-                                        confirmSelectedEntity = true;
-                                        if (confirmedSelectedEntity != nullptr)confirmedSelectedEntity->isSelected = false;
-                                        confirmedSelectedEntity = selectedEntity;
-                                        confirmedSelectedEntity->isSelected = true;
-                                    }
-                                    mouseLeftReleased = false;
-                                }
-                            }
-                        }
-
-                    }
-
-                }
-
-                if (mouseLeftReleased && confirmedSelectedEntity != nullptr) {
-                    confirmedSelectedEntity->isSelected = false;
-                    confirmSelectedEntity = false;
-                    confirmedSelectedEntity = nullptr;
-
-                }
-
-            }
         }
     }
 
@@ -159,46 +70,8 @@ namespace Lengine {
         bool viewportHovered = viewportPanel.IsViewportHovered();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
-
             // 1. Send all events to ImGui
             imguiLayer.processEvent(event);
-            editorLayer.OnEvent(event);
-            // Case 1: move camera
-            if (camera.isFixed == false) {
-                if (viewportFocused)
-                    processEvents(event);
-                continue;
-            }
-
-            // 2. Engine handles only if ImGui does NOT want them
-            if (camera.isFixed)
-            {
-                // ImGui wants event? → give event ONLY to ImGui
-                if (imguiCapturesMouse || imguiCapturesKeyboard)
-                    continue;
-
-                // Viewport hovered → object selection/manipulation
-                if (viewportHovered)
-                    processEvents(event);
-
-                // Outside viewport → only UI gets input
-                continue;
-            }
-        }
-        // ---- MODE 1: CAMERA MODE ----
-        if (!(camera.isFixed))
-        {
-            if (viewportFocused)
-            {
-                // camera movement, mouse delta, WASD
-                inputManager.updateMouseCoords();
-                glm::vec2 mouseCoords = inputManager.getMouseCoords();
-
-                int x, y;
-                SDL_GetRelativeMouseState(&x, &y);
-                glm::vec2 relativeMouseCoords = { x,y };
-                camera.update(0.1f, relativeMouseCoords);
-            }
 
         }
 
@@ -206,30 +79,67 @@ namespace Lengine {
         // ---- MODE 2: EDITOR MODE ----
         if (camera.isFixed)
         {
-            if (!imguiCapturesKeyboard && !imguiCapturesMouse)
+            if (viewportHovered)
             {
-                if (viewportHovered)
-                {
-                   
+                
 
-                    inputManager.updateMouseCoords();
-                    glm::vec2 mouseCoords = inputManager.getMouseCoords();
-                    editorLayer.TrySelectEntity(mouseCoords);
+                for (SDL_Keycode key : { SDLK_UP, SDLK_DOWN, SDLK_x}) {
+                    editorLayer.HandleKeyboardShortcuts(key);
                 }
-            }
 
-            // outside viewport → nothing for engine
+                for ( Uint8 button : { SDL_BUTTON_LEFT, SDL_BUTTON_RIGHT, SDL_BUTTON_MIDDLE}) {
+                    if (inputManager.isMouseButtonPressed(button)) {
+                        switch (button) {
+                        case  SDL_BUTTON_LEFT:
+                            editorLayer.selectHoveredEntity();
+                            break;
+                        }
+                    }
+                    
+                    if (inputManager.isMouseButtonDown(button)) {
+                        switch (button) {
+                        case  SDL_BUTTON_LEFT: 
+                            editorLayer.HandleDrag();
+                            break;
+                        }
+                    }           
+                }
+
+                if (inputManager.getScrollY()) {
+                    editorLayer.HandleMouseWheel(inputManager.getScrollY());
+                }
+                inputManager.resetScroll();
+
+            } 
         }
+      
         
         if (camera.isFixed == false)
         {
             // Enter camera freelook mode
             ImGui::SetWindowFocus("Viewport");
 
-
-
             SDL_ShowCursor(SDL_DISABLE);
             SDL_SetRelativeMouseMode(SDL_TRUE);  // lock mouse inside window
+
+
+            if (viewportFocused)
+            {
+                ImVec2 pos = editorLayer.GetViewportPanel().GetViewportPos();        // top-left corner
+                ImVec2 size = editorLayer.GetViewportPanel().GetViewportSize();      // size
+                int mx, my;
+                SDL_GetRelativeMouseState(&mx, &my);
+                int clampedX = std::clamp(mx, (int)pos.x, (int)(pos.x + size.x - 1));
+                int clampedY = std::clamp(my, (int)pos.y, (int)(pos.y + size.y - 1));
+
+                if (mx != clampedX || my != clampedY)
+                    SDL_WarpMouseInWindow(window.getWindow(), clampedX, clampedY);
+
+                glm::vec2 relativeMouseCoords = { mx,my };
+                camera.update(0.1f, relativeMouseCoords);
+
+                
+            }
         }
         else
         {

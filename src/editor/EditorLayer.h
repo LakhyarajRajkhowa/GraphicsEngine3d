@@ -26,25 +26,22 @@ namespace Lengine {
         ~EditorLayer() = default;
 
         void OnAttach();
-        void OnUpdate();       // per-frame logic (optional for future)
-        void OnImGuiRender();  // render all panels
-        void OnEvent(const SDL_Event& event);
+        void OnImGuiRender();  
         void OnDetach();
 
         // Access viewport panel (camera, input needs this)
         ViewportPanel& GetViewportPanel() { return viewportPanel; }
-        void TrySelectEntity(const glm::vec2& mouseCoords);
+
+        // Editor manipulation
+        void checkForHoveredEntity(const glm::vec3& rayDir, const glm::vec3& rayOrigin);
+        void selectHoveredEntity();
+        void HandleDrag();
+        void HandleMouseWheel(const int& mousewheelY);
+        void HandleKeyboardShortcuts(const SDL_Keycode& key);
 
     private:
         void BeginDockspace();
         void SetupDefaultLayout();
-
-        // Editor manipulation
-        void HandleDrag(const glm::vec2& mouseCoords);
-        void HandleMouseWheel(const SDL_Event& e);
-        void HandleKeyboardShortcuts(const SDL_Event& e);
-
-
 
         // Selection state
         bool confirmSelectedEntity = false;
@@ -52,6 +49,7 @@ namespace Lengine {
         Entity* selectedEntity = nullptr;
         Entity* hoveredEntity = nullptr;
 
+        bool leftMousePressed = false;
         bool leftMouseDown = false;
         bool leftMouseReleased = false;
 
@@ -75,6 +73,11 @@ namespace Lengine {
         Camera3d& camera;
         InputManager& inputManager;
         Window& window;
+    private:
+        // Data sending to panels
+
+        void sendDataToSceneHeirarchyPanel();
+        void sendDataToInspectorPanel();
     };
 
 }

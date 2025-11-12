@@ -28,172 +28,119 @@ namespace Lengine {
         // cleanup if you want later
     }
 
-    void EditorLayer::OnUpdate() {
-        // Drag while mouse is held
-        if (dragActive && selectedEntity) {
-            inputManager.updateMouseCoords();
-            glm::vec2 mouseCoords = inputManager.getMouseCoords();
-            HandleDrag(mouseCoords);
-        }
-    }
+  
 
-    void EditorLayer::OnEvent(const SDL_Event& event) {
+    void EditorLayer::checkForHoveredEntity(const glm::vec3& rayDir, const glm::vec3& rayOrigin) {
+        hoveredEntity = nullptr;
 
-        switch (event.type) {
-
-        case SDL_MOUSEBUTTONDOWN:
-            if (event.button.button == SDL_BUTTON_LEFT) {
-                leftMouseDown = true;
-                inputManager.updateMouseCoords();
-                TrySelectEntity(inputManager.getMouseCoords());
-            }
-            break;
-
-        case SDL_MOUSEBUTTONUP:
-            if (event.button.button == SDL_BUTTON_LEFT) {
-                leftMouseDown = false;
-                leftMouseReleased = true;
-                dragActive = false;
-            }
-            break;
-
-        case SDL_MOUSEWHEEL:
-            HandleMouseWheel(event);
-            break;
-
-        case SDL_KEYDOWN:
-            HandleKeyboardShortcuts(event);
-            break;
-        }
-    }
-
-
-    void EditorLayer::TrySelectEntity(const glm::vec2& mouseCoords) {
-
-        int mouseX = mouseCoords.x, mouseY = mouseCoords.y;
-
-
-
-        glm::vec3 rayDir = getRayFromMouse(
-            mouseX,
-            mouseY,
-            window.getScreenWidth(),
-            window.getScreenHeight(),
-            camera.getViewMatrix(),
-            camera.getProjectionMatrix()
-        );
-
-        glm::vec3 rayOrigin = camera.getCameraPosition();
         const auto& entities = scene.getEntities();
+            float closest = 999999.0f;
 
-        if (!SDL_GetMouseState(nullptr, nullptr)) {
-            selectedEntity = nullptr;
-        }
-        else {
-            if (selectedEntity != nullptr) {
-                glm::vec3 currentHit = RayPlaneIntersection(
-                    rayOrigin, rayDir,
-                    dragPlaneNormal, dragPlaneY
-                );
-
-                if (SDL_BUTTON(SDL_BUTTON_LEFT)) {
-                    selectedEntity->getTransform().position = currentHit + dragOffset;
-                }
-
-
-            }
-            else {
-
-
-                float closest = 999999.0f;
-
-                for (auto& e : entities) {
-
-                    for (auto& sm : e->getMesh()->subMeshes) {
-
-                        float radius = sm.getBoundingRadius() * e->getTransform().scale.x;
-                        glm::vec3 centre = e->getTransform().position + sm.getLocalCenter() * e->getTransform().scale;
-
-                        if (rayIntersectsSphere(rayOrigin, rayDir, centre, radius)) {
-                            float dist = glm::distance(rayOrigin, centre);
-                            if (dist < closest) {
-                                closest = dist;
-                                selectedEntity = e.get();
+            for (auto& e : entities) {
+                for (auto& sm : e->getMesh()->subMeshes) {
+                    float radius = sm.getBoundingRadius() * e->getTransform().scale.x;
+                    glm::vec3 centre = e->getTransform().position + sm.getLocalCenter() * e->getTransform().scale;
+                    if (rayIntersectsSphere(rayOrigin, rayDir, centre, radius)) {
+                        float dist = glm::distance(rayOrigin, centre);
+                        if (dist < closest) {
+                            closest = dist;
+                            hoveredEntity = e.get();
 
                                 dragPlaneNormal = glm::vec3(0, 1, 0);
-                                dragPlaneY = selectedEntity->getTransform().position.y;
+                                dragPlaneY = hoveredEntity->getTransform().position.y;
 
                                 dragStartPoint = RayPlaneIntersection(
                                     rayOrigin, rayDir,
                                     dragPlaneNormal, dragPlaneY
                                 );
 
-                                dragOffset = selectedEntity->getTransform().position - dragStartPoint;
+                                dragOffset = hoveredEntity->getTransform().position - dragStartPoint;
 
-                                // entity selected
-                                if (leftMouseReleased) {
-                                    if (selectedEntity != nullptr) {
-                                        confirmSelectedEntity = true;
-                                        if (confirmedSelectedEntity != nullptr)confirmedSelectedEntity->isSelected = false;
-                                        confirmedSelectedEntity = selectedEntity;
-                                        confirmedSelectedEntity->isSelected = true;
-                                    }
-                                    leftMouseReleased = false;
-                                }
-                            }
                         }
-
+                       
                     }
-
+                    
                 }
-
-                if (leftMouseReleased && confirmedSelectedEntity != nullptr) {
-                    confirmedSelectedEntity->isSelected = false;
-                    confirmSelectedEntity = false;
-                    confirmedSelectedEntity = nullptr;
-
-                }
-
             }
-        }
     }
-    void EditorLayer::HandleDrag(const glm::vec2& mouseCoords) {
 
-        if (!selectedEntity) return;
+    void EditorLayer::selectHoveredEntity() {
+        ImVec2 mouse = viewportPanel.getMousePosInViewport();
+        ImVec2 vpSize = viewportPanel.GetViewportSize();
 
-        glm::vec3 rayDir = getRayFromMouse(
-            mouseCoords.x,
-            mouseCoords.y,
-            window.getScreenWidth(),
-            window.getScreenHeight(),
-            camera.getViewMatrix(),
-            camera.getProjectionMatrix()
+        glm::mat4 view = camera.getViewMatrix();
+        glm::mat4 projection = camera.getProjectionMatrix();
+
+        glm::vec3 rayDir = ComputeRayDirection(
+            mouse.x,
+            mouse.y,
+            vpSize.x,
+            vpSize.y,
+            view,
+            projection
+        );
+
+        glm::vec3 rayOrigin = camera.getCameraPosition();
+        checkForHoveredEntity(rayDir, rayOrigin);
+        if (hoveredEntity == nullptr) {
+            confirmSelectedEntity = false;
+            selectedEntity = nullptr;
+            return;
+        }
+            
+        selectedEntity = hoveredEntity;
+        confirmSelectedEntity = true;
+
+        std::cout << "selected entity: " << selectedEntity->getName() << std::endl;
+        
+    }
+    void EditorLayer::HandleDrag() {
+
+        ImVec2 mouse = viewportPanel.getMousePosInViewport();
+        ImVec2 vpSize = viewportPanel.GetViewportSize();
+        glm::mat4 view = camera.getViewMatrix();
+        glm::mat4 projection = camera.getProjectionMatrix();
+        glm::vec3 rayDir = ComputeRayDirection(
+            mouse.x,
+            mouse.y,
+            vpSize.x,
+            vpSize.y,
+            view,
+            projection
         );
         glm::vec3 rayOrigin = camera.getCameraPosition();
+            if (selectedEntity != nullptr) {
+                glm::vec3 currentHit = RayPlaneIntersection(
+                    rayOrigin, rayDir,
+                    dragPlaneNormal, dragPlaneY
+                );
 
-        glm::vec3 hit = RayPlaneIntersection(
-            rayOrigin, rayDir,
-            dragPlaneNormal, dragPlaneY
-        );
+                    selectedEntity->getTransform().position = currentHit + dragOffset;
 
-        selectedEntity->getTransform().position = hit + dragOffset;
+
+            }
+            else {
+                checkForHoveredEntity(rayDir, rayOrigin);
+            }
+        
+
+
+        
     }
-    // -------------------------------------------------------
-    // Scale entity using mouse wheel
-    // -------------------------------------------------------
-    void EditorLayer::HandleMouseWheel(const SDL_Event& e) {
+
+    void EditorLayer::HandleMouseWheel(const int& mouseWheelY) {
 
         if (!selectedEntity) return;
 
         auto& scale = selectedEntity->getTransform().scale;
 
-        if (e.wheel.y > 0) {
+        if (mouseWheelY > 0) {
             // scale up
             scale += (scale.x < 0.1f) ?
                 ((scale.x < 0.01f) ? glm::vec3(0.001f) : glm::vec3(0.01f)) :
                 glm::vec3(0.1f);
         }
-        else if (e.wheel.y < 0) {
+        else if (mouseWheelY < 0) {
             // scale down
             scale -= (scale.x < 0.1f) ?
                 ((scale.x < 0.01f) ? glm::vec3(0.001f) : glm::vec3(0.01f)) :
@@ -201,25 +148,33 @@ namespace Lengine {
         }
     }
 
-    // -------------------------------------------------------
-    // Keyboard shortcuts for entity manipulation
-    // -------------------------------------------------------
-    void EditorLayer::HandleKeyboardShortcuts(const SDL_Event& e) {
+
+    void EditorLayer::HandleKeyboardShortcuts(const SDL_Keycode& key) {
 
         if (!selectedEntity) return;
-
         auto& pos = selectedEntity->getTransform().position;
-
-        if (e.key.keysym.sym == SDLK_UP)
-            pos.y += 0.01f;
-
-        if (e.key.keysym.sym == SDLK_DOWN)
-            pos.y -= 0.01f;
-
-        if (e.key.keysym.sym == SDLK_x) {
-            scene.removeEntity(selectedEntity->getName());
-            selectedEntity = nullptr;
+        
+        if (inputManager.isKeyDown(key)) {
+            switch (key) {
+            case SDLK_UP:
+                pos.y += 0.01f;
+                break;
+            case SDLK_DOWN:
+                pos.y -= 0.01f;
+                break;
+            }
+            
         }
+        if (inputManager.isKeyPressed(key)) {
+            switch (key) {
+            case SDLK_x:
+                scene.removeEntity(selectedEntity->getName());
+                selectedEntity = nullptr;
+                break;
+            
+            }
+
+        }   
     }
 
     void EditorLayer::OnImGuiRender() {
@@ -234,7 +189,7 @@ namespace Lengine {
 
         // ✅ Render panels
         viewportPanel.OnImGuiRender(camera);
-        hierarchyPanel.OnImGuiRender(camera);
+        hierarchyPanel.OnImGuiRender(camera, scene);
         inspectorPanel.OnImGuiRender();
         consolePanel.OnImGuiRender();
     }

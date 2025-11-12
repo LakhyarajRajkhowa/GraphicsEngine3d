@@ -5,19 +5,19 @@ namespace Lengine {
 
     class Framebuffer {
     public:
-        Framebuffer(int width, int height);
+        Framebuffer(float width, float height);
         ~Framebuffer();
 
         void Bind();
         void Unbind();
 
-        void Resize(int width, int height);
+        void Resize(float width, float height);
 
         GLuint GetColorAttachment() const { return m_ColorAttachment; }
         GLuint GetID() const { return m_FBO; }
 
-        int GetWidth() const { return m_Width; }
-        int GetHeight() const { return m_Height; }
+        float GetWidth() const { return m_Width; }
+        float GetHeight() const { return m_Height; }
 
     private:
         void Create();
@@ -28,8 +28,8 @@ namespace Lengine {
         GLuint m_ColorAttachment = 0;
         GLuint m_DepthAttachment = 0;
 
-        int m_Width = 0;
-        int m_Height = 0;
+        float m_Width = 0;
+        float m_Height = 0;
     };
 
 }

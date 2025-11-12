@@ -45,8 +45,8 @@ namespace Lengine {
 			
 		);
 		camera.init(
-			settings.windowWidth,
-			settings.windowHeight,
+			editorLayer->GetViewportPanel().GetViewportSize().x,
+			editorLayer->GetViewportPanel().GetViewportSize().y,
 			&inputManager,
 			{ settings.cameraPosX, 5, settings.cameraPosZ },
 			settings.cameraFov
@@ -69,7 +69,7 @@ namespace Lengine {
 
 			inputManager.update();
 			inputHandler.handleInputs(imguiLayer, viewportPanel, *editorLayer);
-			editorLayer->OnUpdate();
+			//editorLayer->OnUpdate();
 			imguiLayer.beginFrame();
 
 			//  Framebuffer captures the frame of the game screen

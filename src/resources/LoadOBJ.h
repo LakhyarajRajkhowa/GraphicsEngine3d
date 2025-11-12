@@ -306,9 +306,7 @@ namespace Lengine {
         if (mesh.subMeshes.empty()) {
             std::cerr << "[FASTOBJ] Warning: no submeshes created for " << path << "\n";
         }
-        else {
-            std::cout << "[FASTOBJ] Loaded " << mesh.subMeshes.size() << " submesh(es)\n";
-        }
+       
     }
 
 } // namespace Lengine

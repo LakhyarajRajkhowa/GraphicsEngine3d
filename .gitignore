@@ -1,5 +1,6 @@
 # Ignore build directory
 build/
+assets/Textures
 
 # Ignore Windows executables
 *.exe

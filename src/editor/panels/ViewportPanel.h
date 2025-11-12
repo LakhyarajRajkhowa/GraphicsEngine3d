@@ -27,14 +27,21 @@ namespace Lengine {
         bool IsViewportFocused() const { return m_Focused; }
         bool IsViewportHovered() const { return m_Hovered; }
 
-        glm::vec2 GetViewportSize() const { return m_ViewportSize; }
+        ImVec2 GetViewportSize() const { return m_ViewportSize; }
+        ImVec2 GetViewportPos() const { return m_ViewportPos; }
+
+        ImVec2 ViewportPanel::getMousePosInViewport() const { return mouseInViewport; }
         bool fixCamera = true;
 
     private:
         Framebuffer m_Framebuffer;
+        float offsetValueX = 0.14f;
+        float offsetValueY = -0.1f;
+        ImVec2 m_ViewportSize = { 1280, 720 };
+        ImVec2 m_ViewportPos;
+        ImVec2 m_LastViewportSize = { -1, -1 };
 
-        glm::vec2 m_ViewportSize = { 1280, 720 };
-        glm::vec2 m_LastViewportSize = { -1, -1 };
+        ImVec2 mouseInViewport;
 
         bool m_Focused = false;  // ImGui window focused
         bool m_Hovered = false;  // Mouse is inside viewport panel

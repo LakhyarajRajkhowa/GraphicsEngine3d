@@ -10,13 +10,22 @@ namespace Lengine {
 		for (auto& it : _keyMap) {
 			_previousKeyMap[it.first] = it.second;
 		}
+
+		for (auto& it : _mouseButtonMap) {
+			_previousMouseButtonMap[it.first] = it.second;
+		}
+
 	}
 
-
+	void InputManager::pressButton(unsigned int keyID) {
+		_mouseButtonMap[keyID] = true;
+	}
 	void InputManager::pressKey(unsigned int keyID) {
 		_keyMap[keyID] = true;
 	}
-
+	void InputManager::releaseButton(unsigned int buttonID) {
+		_mouseButtonMap[buttonID] = false;
+	}
 	void InputManager::releaseKey(unsigned int keyID) {
 		_keyMap[keyID] = false;
 	}
@@ -28,7 +37,15 @@ namespace Lengine {
 		_mouseCoords.y = mouseY;
 	}
 
-
+	bool InputManager::isMouseButtonDown(unsigned int buttonID) {
+		auto it = _mouseButtonMap.find(buttonID);
+		if (it != _mouseButtonMap.end()) {
+			return it->second;
+		}
+		else {
+			return false;
+		}
+	}
 	bool InputManager::isKeyDown(unsigned int keyID) {
 		auto it = _keyMap.find(keyID);
 		if (it != _keyMap.end()){
@@ -38,6 +55,13 @@ namespace Lengine {
 			return false;
 		}
 	}
+	bool InputManager::isMouseButtonPressed(unsigned int buttonID) {
+		if (isMouseButtonDown(buttonID) && !wasMouseButtonDown(buttonID)) {
+			return true;
+		}
+		return false;
+	}
+
 
 	bool InputManager::isKeyPressed(unsigned int keyID) {
 		if (isKeyDown(keyID) && !wasKeyDown(keyID)) {
@@ -45,7 +69,15 @@ namespace Lengine {
 		}
 		return false;
 	}
-
+	bool InputManager::wasMouseButtonDown(unsigned int buttonID) {
+		auto it = _previousMouseButtonMap.find(buttonID);
+		if (it != _previousMouseButtonMap.end()) {
+			return it->second;
+		}
+		else {
+			return false;
+		}
+	}
 	bool InputManager::wasKeyDown(unsigned int keyID) {
 		auto it = _previousKeyMap.find(keyID);
 		if (it != _previousKeyMap.end()) {
@@ -55,5 +87,15 @@ namespace Lengine {
 			return false;
 		}
 	}
+	void InputManager::setScroll(int x, int y) {
+		scrollX = x;
+		scrollY = y;
+	}
+
+	void InputManager::resetScroll() {
+		scrollX = 0;
+		scrollY = 0;
+	}
+
 }
 
