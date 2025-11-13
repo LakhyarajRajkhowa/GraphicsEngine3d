@@ -31,6 +31,8 @@ namespace Lengine {
         ImVec2 GetViewportPos() const { return m_ViewportPos; }
 
         ImVec2 ViewportPanel::getMousePosInViewport() const { return mouseInViewport; }
+        ImVec2 ViewportPanel::getMousePosInImage() const { return mouseInImage; }
+
         bool fixCamera = true;
 
     private:
@@ -42,6 +44,8 @@ namespace Lengine {
         ImVec2 m_LastViewportSize = { -1, -1 };
 
         ImVec2 mouseInViewport;
+        ImVec2 mouseInImage;
+
 
         bool m_Focused = false;  // ImGui window focused
         bool m_Hovered = false;  // Mouse is inside viewport panel

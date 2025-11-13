@@ -7,6 +7,7 @@ namespace Lengine {
         Scene& scn,
         Camera3d& cam,
         InputManager& inputMgr,
+        AssetManager& assetMgr,
         Window& win
     )
         : viewportPanel(),     
@@ -16,6 +17,7 @@ namespace Lengine {
         camera(cam),
         scene(scn),
         inputManager(inputMgr),
+        assetManager(assetMgr),
         window(win)
     {
     }
@@ -45,7 +47,6 @@ namespace Lengine {
                         if (dist < closest) {
                             closest = dist;
                             hoveredEntity = e.get();
-
                                 dragPlaneNormal = glm::vec3(0, 1, 0);
                                 dragPlaneY = hoveredEntity->getTransform().position.y;
 
@@ -53,6 +54,7 @@ namespace Lengine {
                                     rayOrigin, rayDir,
                                     dragPlaneNormal, dragPlaneY
                                 );
+                               
 
                                 dragOffset = hoveredEntity->getTransform().position - dragStartPoint;
 
@@ -66,10 +68,13 @@ namespace Lengine {
 
     void EditorLayer::selectHoveredEntity() {
         ImVec2 mouse = viewportPanel.getMousePosInViewport();
+        ImVec2 mouse2 = viewportPanel.getMousePosInImage();
         ImVec2 vpSize = viewportPanel.GetViewportSize();
-
+       
+        
         glm::mat4 view = camera.getViewMatrix();
         glm::mat4 projection = camera.getProjectionMatrix();
+      
 
         glm::vec3 rayDir = ComputeRayDirection(
             mouse.x,
@@ -81,6 +86,7 @@ namespace Lengine {
         );
 
         glm::vec3 rayOrigin = camera.getCameraPosition();
+       
         checkForHoveredEntity(rayDir, rayOrigin);
         if (hoveredEntity == nullptr) {
             confirmSelectedEntity = false;
@@ -91,7 +97,6 @@ namespace Lengine {
         selectedEntity = hoveredEntity;
         confirmSelectedEntity = true;
 
-        std::cout << "selected entity: " << selectedEntity->getName() << std::endl;
         
     }
     void EditorLayer::HandleDrag() {
@@ -189,7 +194,7 @@ namespace Lengine {
 
         // ✅ Render panels
         viewportPanel.OnImGuiRender(camera);
-        hierarchyPanel.OnImGuiRender(camera, scene);
+        hierarchyPanel.OnImGuiRender(camera, scene, assetManager);
         inspectorPanel.OnImGuiRender();
         consolePanel.OnImGuiRender();
     }
@@ -261,3 +266,4 @@ namespace Lengine {
     }
 
 }
+////////////////////

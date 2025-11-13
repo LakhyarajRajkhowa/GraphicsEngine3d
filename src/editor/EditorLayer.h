@@ -22,6 +22,7 @@ namespace Lengine {
             Scene& scene,
             Camera3d& camera,
             InputManager& inputManager,
+            AssetManager& assetManager,
             Window& window);
         ~EditorLayer() = default;
 
@@ -72,6 +73,7 @@ namespace Lengine {
         Scene& scene;
         Camera3d& camera;
         InputManager& inputManager;
+        AssetManager& assetManager;
         Window& window;
     private:
         // Data sending to panels

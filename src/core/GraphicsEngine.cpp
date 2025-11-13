@@ -41,6 +41,7 @@ namespace Lengine {
 			scene,
 			camera,
 			inputManager,
+			assetManager,
 			window
 			
 		);

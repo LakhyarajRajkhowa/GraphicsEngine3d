@@ -36,6 +36,7 @@ namespace Lengine {
         const glm::vec3& getLocalCenter() { return localCenter; }
         float& getBoundingRadius() { return boundingRadius; }
         void setupMesh();
+        
 
     };
     class Mesh {

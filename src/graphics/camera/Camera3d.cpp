@@ -30,7 +30,7 @@ namespace Lengine {
     void Camera3d::setAspectRatio(float aspect)
     {
         aspectRatio = aspect;   
-        projectionMatrix = glm::perspective(glm::radians(fov), aspectRatio, nearPlane, farPlane);
+        projectionMatrix = glm::perspective(glm::radians(fov), aspect, nearPlane, farPlane);
     }
     glm::mat4 Camera3d::getViewMatrix() {
         return glm::lookAt(position, position + front, up);

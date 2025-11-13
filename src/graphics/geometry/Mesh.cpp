@@ -29,7 +29,11 @@ namespace Lengine {
         }
 
         // Step 2: center = middle of min and max
+        glm::vec3 size = maxV - minV;
         localCenter = (minV + maxV) * 0.5f;
+
+        //adjusting the size
+        float maxExtent = glm::max(size.x, glm::max(size.y, size.z));
 
         // Step 3: bounding radius = max distance from center
         float maxDist = 0.0f;
@@ -39,8 +43,8 @@ namespace Lengine {
 
         boundingRadius = maxDist;
 
-
     }
+    
 
     void SubMesh::setupMesh() {
 
@@ -80,4 +84,6 @@ namespace Lengine {
         glBindVertexArray(0);
     }
 
+
+   
 }

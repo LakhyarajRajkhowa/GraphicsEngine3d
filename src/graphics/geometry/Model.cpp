@@ -7,8 +7,8 @@ namespace Lengine {
         mesh = std::make_shared<Lengine::Mesh>();
         mesh->name = name;
         
-        Lengine::loadOBJ(path, *mesh);
-
+       // Lengine::loadOBJ(path, *mesh);
+        assimpLoader(path, *mesh);
         for (auto& sm : mesh->subMeshes)
             sm.setupMesh();
 

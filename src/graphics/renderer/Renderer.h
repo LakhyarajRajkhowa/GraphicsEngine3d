@@ -13,5 +13,6 @@ namespace Lengine {
 
         void renderScene(const Scene& scene, Camera3d& camera);
 
+        std::unordered_set<std::string> loadedEntity;
     };
 }

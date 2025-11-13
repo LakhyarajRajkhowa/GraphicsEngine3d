@@ -19,6 +19,9 @@ namespace Lengine {
         auto entity = std::make_unique<Entity>(name, mesh, material);
         Entity* entityPtr = entity.get();
         entities.push_back(std::move(entity));
+
+        
+
         return entityPtr;
     }
 
@@ -43,4 +46,4 @@ namespace Lengine {
 
 
 
-    
+    //////////////////

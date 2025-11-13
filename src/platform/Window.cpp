@@ -12,7 +12,7 @@ namespace Lengine {
 
     int Window::create(std::string windowName, int screenWidth, int screenHeight, unsigned int currentFlags)
     {
-        Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_MAXIMIZED;
+        Uint32 flags = SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE ;
 
         if (currentFlags & INVISIBLE) {
             flags |= SDL_WINDOW_HIDDEN;

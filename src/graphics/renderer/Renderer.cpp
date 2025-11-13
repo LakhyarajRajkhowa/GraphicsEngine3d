@@ -18,6 +18,20 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
 
         GLSLProgram* shader = material->getShader();
         shader->use();
+        if (loadedEntity.find(entity->getName()) == loadedEntity.end()) {
+            for (auto& sm : mesh->subMeshes) {
+                float radius = sm.getBoundingRadius();
+                if (radius > 1.0f || radius < 0.1f) {
+                    float scaleFactor = (1.0f / radius);
+                   
+                    auto& scale = entity->getTransform().scale;
+                    scale *= glm::vec3(scaleFactor);
+                    break;
+                }
+
+            }
+            loadedEntity.insert(entity->getName());
+        }
         
         // transforms
         glm::mat4 model = entity->getTransformMatrix();
@@ -36,6 +50,8 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
         material->apply();
 
         // draw
+
+        
         mesh->draw();
 
         shader->unuse();
@@ -44,3 +60,4 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
 
 
 
+////////////

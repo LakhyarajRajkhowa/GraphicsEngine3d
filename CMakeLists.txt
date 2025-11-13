@@ -18,6 +18,7 @@ set(IMGUI_DIR ${CMAKE_SOURCE_DIR}/src/external/imgui)
 set(SDL2_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/external/SDL2)
 set(GL_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/external/GL)
 set(GLM_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/external/glm)
+set(ASSIMP_INCLUDE_DIR ${CMAKE_SOURCE_DIR}/src/external/assimp)
 set(SDL2_LIB_DIR ${CMAKE_SOURCE_DIR}/lib)
 
 # ────────────────────────────────────────────────
@@ -129,6 +130,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE
     ${CMAKE_SOURCE_DIR}/src/external
     ${GL_INCLUDE_DIR}
     ${GLM_INCLUDE_DIR}
+    ${ASSIMP_INCLUDE_DIR}
     ${IMGUI_DIR}
     ${IMGUI_DIR}/backends
     ${SDL2_INCLUDE_DIR}
@@ -140,8 +142,9 @@ target_include_directories(${PROJECT_NAME} PRIVATE
 target_link_directories(${PROJECT_NAME} PRIVATE ${SDL2_LIB_DIR})
 
 target_link_libraries(${PROJECT_NAME}
+    assimp-vc143-mt
     SDL2main
     SDL2
     glew32
-    opengl32
+    opengl32     
 )

@@ -18,7 +18,12 @@
 #include <sys/stat.h> // optional for file timestamp
 #include <glm/glm.hpp>
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+
 #include "../graphics/geometry/Mesh.h"
+
 
 namespace Lengine {
 
@@ -307,6 +312,95 @@ namespace Lengine {
             std::cerr << "[FASTOBJ] Warning: no submeshes created for " << path << "\n";
         }
        
+        
+    }
+    
+
+    inline SubMesh convertToEngineSubMesh(const aiMesh* mesh) {
+        std::vector<Vertex> vertices;
+        std::vector<unsigned int> indices;
+
+        vertices.reserve(mesh->mNumVertices);
+        indices.reserve(mesh->mNumFaces * 3);
+
+        // --- Convert vertices ---
+        for (unsigned int i = 0; i < mesh->mNumVertices; i++) {
+            Vertex vertex{};
+
+            // Position
+            if (mesh->HasPositions() && mesh->mVertices)
+                vertex.position = glm::vec3(mesh->mVertices[i].x, mesh->mVertices[i].y, mesh->mVertices[i].z);
+            else
+                vertex.position = glm::vec3(0.0f);
+            
+            // Normal
+            if (mesh->HasNormals() && mesh->mNormals)
+                vertex.normal = glm::vec3(mesh->mNormals[i].x, mesh->mNormals[i].y, mesh->mNormals[i].z);
+            else
+                vertex.normal = glm::vec3(0.0f);
+
+            // Texture coordinates (only first UV channel)
+            if (mesh->HasTextureCoords(0) && mesh->mTextureCoords[0]  && i < mesh->mTextureCoords[0]->Length()) {
+                vertex.texCoord = glm::vec2(
+                    mesh->mTextureCoords[0][i].x,
+                    mesh->mTextureCoords[0][i].y
+                );
+            }
+            else {
+                vertex.texCoord = glm::vec2(0.0f);
+            }
+
+
+            // Tangents and Bitangents
+            if (mesh->HasTangentsAndBitangents() && mesh->mTangents && mesh->mBitangents) {
+                vertex.tangent = glm::vec3(mesh->mTangents[i].x, mesh->mTangents[i].y, mesh->mTangents[i].z);
+                vertex.bitangent = glm::vec3(mesh->mBitangents[i].x, mesh->mBitangents[i].y, mesh->mBitangents[i].z);
+            }
+            else {
+                vertex.tangent = glm::vec3(0.0f);
+                vertex.bitangent = glm::vec3(0.0f);
+            }
+
+            vertices.push_back(vertex);
+        }
+
+        // --- Convert faces (indices) ---
+        for (unsigned int i = 0; i < mesh->mNumFaces; i++) {
+            const aiFace& face = mesh->mFaces[i];
+            // Defensive check — only handle triangles
+            if (face.mNumIndices == 3) {
+                indices.push_back(face.mIndices[0]);
+                indices.push_back(face.mIndices[1]);
+                indices.push_back(face.mIndices[2]);
+            }
+        }
+
+        // Construct SubMesh
+        SubMesh engineSubMesh(vertices, indices);
+        return engineSubMesh;
+    }
+
+    inline int assimpLoader(const std::string& path, Mesh& mesh) {
+        Assimp::Importer importer;
+
+        const aiScene* scene = importer.ReadFile(path,
+            aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
+
+        if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
+            std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
+            return -1;
+        }
+
+        std::cout << "Model loaded successfully!" << std::endl;
+
+        if (scene && scene->mRootNode) {
+            for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
+                aiMesh* aMesh = scene->mMeshes[i];
+                SubMesh submesh = convertToEngineSubMesh(aMesh);
+                mesh.subMeshes.push_back(submesh);
+
+            }
+        }
     }
 
 } // namespace Lengine

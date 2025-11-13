@@ -29,34 +29,8 @@ namespace Lengine {
 
 
 
-    void InputHandler::processEvents(const SDL_Event& event) {
-
-        switch (event.type) {
-        
-
-            if (event.type == SDL_MOUSEWHEEL) {
-
-                if (event.wheel.y > 0) {
-                    if (confirmSelectedEntity && confirmedSelectedEntity != nullptr) {
-                        confirmedSelectedEntity->getTransform().scale +=
-                            (confirmedSelectedEntity->getTransform().scale.x < 0.1f) ?
-                            (confirmedSelectedEntity->getTransform().scale.x < 0.01f) ?
-                            glm::vec3(0.001f) : glm::vec3(0.01f) : glm::vec3(0.1f);
-                    }
-                }
-                else if (event.wheel.y < 0) {
-                    if (confirmSelectedEntity && confirmedSelectedEntity != nullptr) {
-                        confirmedSelectedEntity->getTransform().scale -=
-                            (confirmedSelectedEntity->getTransform().scale.x < 0.1f) ?
-                            (confirmedSelectedEntity->getTransform().scale.x < 0.01f) ?
-                            glm::vec3(0.001f) : glm::vec3(0.01f) : glm::vec3(0.1f);
-                    }
-                }
-            }
-
-        }
-    }
-
+   
+    
     void InputHandler::handleInputs(
         ImGuiLayer& imguiLayer,
         const ViewportPanel& viewportPanel,
@@ -81,7 +55,7 @@ namespace Lengine {
         {
             if (viewportHovered)
             {
-                
+
 
                 for (SDL_Keycode key : { SDLK_UP, SDLK_DOWN, SDLK_x}) {
                     editorLayer.HandleKeyboardShortcuts(key);
@@ -137,6 +111,8 @@ namespace Lengine {
 
                 glm::vec2 relativeMouseCoords = { mx,my };
                 camera.update(0.1f, relativeMouseCoords);
+
+
 
                 
             }

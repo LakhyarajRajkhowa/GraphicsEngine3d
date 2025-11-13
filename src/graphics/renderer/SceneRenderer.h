@@ -17,6 +17,7 @@ namespace Lengine {
 
 		void init();
 		void initScene();
+		void adjustToScale();
 		void clearFrame(const glm::vec4& clearColor);
 		void renderScene();
 		void endFrame();
