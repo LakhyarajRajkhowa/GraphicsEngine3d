@@ -5,7 +5,7 @@ namespace Lengine {
    
     void Model::loadModel(const std::string& name, const std::string& path, std::shared_ptr<Lengine::Mesh>& mesh) {
         mesh = std::make_shared<Lengine::Mesh>();
-        mesh->name = name;
+        mesh->name = ExtractNameFromPath(path);
         
        // Lengine::loadOBJ(path, *mesh);
         assimpLoader(path, *mesh);

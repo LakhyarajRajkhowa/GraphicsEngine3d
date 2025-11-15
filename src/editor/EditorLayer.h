@@ -11,6 +11,7 @@
 #include "../editor/panels/SceneHeirarchyPanel.h"
 #include "../editor/panels/InspectorPanel.h"
 #include "../editor/panels/ConsolePanel.h"
+#include "../editor/panels/AssetPanel.h"
 
 #include "../graphics/geometry/ray.h"
 namespace Lengine {
@@ -68,6 +69,7 @@ namespace Lengine {
         SceneHierarchyPanel hierarchyPanel;
         InspectorPanel inspectorPanel;
         ConsolePanel consolePanel;
+        AssetPanel assetPanel;
 
         // External engine systems (not owned)
         Scene& scene;
@@ -80,6 +82,10 @@ namespace Lengine {
 
         void sendDataToSceneHeirarchyPanel();
         void sendDataToInspectorPanel();
+
+        std::filesystem::path exePath = std::filesystem::current_path();
+        std::filesystem::path assestPath = std::filesystem::absolute(exePath / "../assets");
+
     };
 
 }

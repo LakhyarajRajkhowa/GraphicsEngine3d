@@ -3,20 +3,39 @@
 using namespace Lengine;
 
 
-Mesh* AssetManager::getMesh(const std::string& name) {
-    return meshes[name].get();
+Mesh* AssetManager::getMesh(const UUID& id) {
+    return meshes[id].get();
+}
+UUID AssetManager::getUUID(const std::string& name) {
+    for (auto& [uuid, mesh] : meshes)
+    {
+        if (mesh && mesh->name == name)
+            return uuid;
+    }
+
+    return UUID::Null;
 }
 
-Mesh* AssetManager::loadMesh(const std::string& name, const std::string& path) {
-    if (meshes.count(name)) return meshes[name].get();
+UUID AssetManager::loadMesh(const std::string& name, const std::string& path) {
+    MetaFile meta;
+
+    if (!MetaFileSystem::HasMeta(path)) {
+        meta.uuid = UUID();
+        meta.type = "texture";
+        MetaFileSystem::Save(path, meta);
+    }
+    else {
+        meta = MetaFileSystem::Load(path);
+    }
+
+    UUID id = meta.uuid;
 
     std::shared_ptr<Mesh> meshPtr;
     Model model;
     model.loadModel(name, path, meshPtr);
+    meshes[id] = meshPtr;
 
-    meshes[name] = std::move(meshPtr);
-
-    return meshes[name].get();
+    return id;
 }
 
 
@@ -41,11 +60,23 @@ GLSLProgram* AssetManager::getShader(const std::string& name) {
 
 GLTexture* AssetManager::loadTexture(const std::string& name , const std::string& path) {
 
-    if (textures.count(name)) return textures[name].get();
-    auto texture = std::make_unique<GLTexture>();
 
-    *texture = textureCache.getTexture(path);
-    
-    textures[name] = std::move(texture);
-    return textures[name].get();
+    MetaFile meta;
+
+    if (!MetaFileSystem::HasMeta(path)) {
+        meta.uuid = UUID();
+        meta.type = "texture";
+        MetaFileSystem::Save(path, meta);
+    }
+    else {
+        meta = MetaFileSystem::Load(path);
+    }
+
+    UUID id = meta.uuid;
+    std::shared_ptr<GLTexture> tex = std::make_shared<GLTexture>();
+    *tex = textureCache.getTexture(path);
+
+    textures[id] = tex;
+    return tex.get();
+ 
 }

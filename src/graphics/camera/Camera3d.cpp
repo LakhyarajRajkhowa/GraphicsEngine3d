@@ -49,7 +49,7 @@ namespace Lengine {
    
     void Camera3d::update(const float& deltaTime, const glm::vec2& mouseCoords){
 
-            const float speed = 0.1f * deltaTime;
+            const float speed =  deltaTime * speedFactor;
 
             moveMouse(mouseCoords.x, mouseCoords.y);
             moveKeyboard(speed);

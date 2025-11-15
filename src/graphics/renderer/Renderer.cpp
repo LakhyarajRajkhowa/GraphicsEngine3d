@@ -3,7 +3,7 @@
 using namespace Lengine;
 
 
-void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
+void Renderer::renderScene(const Scene& scene, Camera3d& camera, AssetManager& assetManager ) {
     const auto& entities = scene.getEntities();
     const Entity* sun = scene.getEntityByName("sun");
 
@@ -12,7 +12,7 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera) {
         Entity* entity = entityPtr.get();
         if (!entity) continue;
 
-        Mesh* mesh = entity->getMesh();
+        Mesh* mesh = assetManager.getMesh(entity->getMeshID());
         Material* material = entity->getMaterial();
         if (!mesh || !material || !material->getShader()) continue;
 

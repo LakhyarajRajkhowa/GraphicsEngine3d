@@ -7,19 +7,23 @@
 #include "../graphics/geometry/Model.h"
 #include "../resources/TextureCache.h"
 
+#include "../utils/metaFileSystem.h"
+
 namespace Lengine {
 	class AssetManager {
 	private:
-		std::unordered_map<std::string, std::shared_ptr<Mesh>> meshes;
+		std::unordered_map<UUID, std::shared_ptr<Mesh>> meshes;
 		std::unordered_map<std::string, std::shared_ptr<GLSLProgram>> shaders;
-		std::unordered_map<std::string, std::shared_ptr<GLTexture>> textures;
+		std::unordered_map<UUID, std::shared_ptr<GLTexture>> textures;
 
 		TextureCache textureCache;
 		
 	public:
-        
-		Mesh* loadMesh(const std::string& name, const std::string& path);
-		Mesh* getMesh(const std::string& name);
+		UUID getUUID(const std::string& name);
+		UUID loadMesh(const std::string& name, const std::string& path);
+		Mesh* getMesh(const UUID& id);
+
+
 
 		GLTexture* getTexture(const std::string& name);
 		GLTexture* loadTexture(const std::string& name, const std::string& path);

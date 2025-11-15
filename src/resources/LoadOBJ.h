@@ -377,6 +377,23 @@ namespace Lengine {
 
         // Construct SubMesh
         SubMesh engineSubMesh(vertices, indices);
+
+        //clear temp memory
+        std::vector<Vertex>().swap(vertices);
+        std::vector<uint32_t>().swap(indices);
+        // print mesh size 
+
+       /* std::cout << mesh->mName.C_Str() << " -" << std::endl;
+        std::cout << "Size of Vertices: "
+            << (vertices.size() * sizeof(vertices[0])) / (1024.0 * 1024.0)
+            << " MB\n";
+
+        std::cout << "Size of Indices: "
+            << (indices.size() * sizeof(indices[0])) / (1024.0 * 1024.0)
+            << " MB\n";
+        std::cout << std::endl;
+        */
+
         return engineSubMesh;
     }
 
@@ -396,11 +413,12 @@ namespace Lengine {
         if (scene && scene->mRootNode) {
             for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
                 aiMesh* aMesh = scene->mMeshes[i];
-                SubMesh submesh = convertToEngineSubMesh(aMesh);
-                mesh.subMeshes.push_back(submesh);
+               
+                mesh.subMeshes.push_back(convertToEngineSubMesh(aMesh));
 
             }
         }
+
     }
 
 } // namespace Lengine

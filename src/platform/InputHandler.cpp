@@ -42,6 +42,8 @@ namespace Lengine {
 
         bool viewportFocused = viewportPanel.IsViewportFocused();
         bool viewportHovered = viewportPanel.IsViewportHovered();
+
+        const float dt = viewportPanel.getDeltaTime();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             // 1. Send all events to ImGui
@@ -110,8 +112,7 @@ namespace Lengine {
                     SDL_WarpMouseInWindow(window.getWindow(), clampedX, clampedY);
 
                 glm::vec2 relativeMouseCoords = { mx,my };
-                camera.update(0.1f, relativeMouseCoords);
-
+                camera.update(dt, relativeMouseCoords);
 
 
                 

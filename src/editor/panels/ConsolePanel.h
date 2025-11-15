@@ -10,15 +10,7 @@ namespace Lengine {
             : m_Buffer(buffer) {
         }
 
-        void OnImGuiRender() {
-            ImGui::Begin("Console");
-
-            for (auto& msg : m_Buffer.GetLogs()) {
-                ImGui::TextUnformatted(msg.c_str());
-            }
-
-            ImGui::End();
-        }
+        void OnImGuiRender();
 
     private:
         LogBuffer& m_Buffer;

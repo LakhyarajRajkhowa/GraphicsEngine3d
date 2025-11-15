@@ -12,6 +12,7 @@
 #include "../graphics/camera/Camera3d.h"
 #include "../graphics/renderer/Framebuffer.h"
 
+#include "../utils/fps.h"
 namespace Lengine {
 
     class ViewportPanel {
@@ -35,6 +36,8 @@ namespace Lengine {
 
         bool fixCamera = true;
 
+        float getDeltaTime() const { return deltaTime; }
+
     private:
         Framebuffer m_Framebuffer;
         float offsetValueX = 0.14f;
@@ -47,8 +50,13 @@ namespace Lengine {
         ImVec2 mouseInImage;
 
 
-        bool m_Focused = false;  // ImGui window focused
-        bool m_Hovered = false;  // Mouse is inside viewport panel
+        bool m_Focused = false; 
+        bool m_Hovered = false;  
+    private:
+        int targetFPS = 144; // my 144 Hz monitor
+        float deltaTime;
+        bool limitFPS = true;
+
     };
 
 }

@@ -3,14 +3,14 @@
 using namespace Lengine;
 
 void GizmoRenderer::initGizmoGrid() {
-    gizmoGrid = assetManager.loadMesh("grid", "../assets/obj/plane.obj");
+    gizmoGrid = assetManager.getMesh (assetManager.loadMesh("grid", "../assets/obj/plane.obj"));
     gizmoGridShader.compileShaders("../assets/Shaders/grid.vert", "../assets/Shaders/grid.frag");
     gizmoGridShader.linkShaders();
 
 }
 void GizmoRenderer::initGizmoSpheres() {
 
-	gizmoSphere = assetManager.loadMesh("sphere", "../assets/obj/sphere.obj");
+	gizmoSphere = assetManager.getMesh(assetManager.loadMesh("sphere", "../assets/obj/sphere.obj"));
 	gizmoSphereShader.compileShaders("../assets/Shaders/boundingSphere.vert", "../assets/Shaders/boundingSphere.frag");
 	gizmoSphereShader.linkShaders();
 
@@ -39,7 +39,7 @@ void GizmoRenderer::drawGizmoSpheres() {
     for (auto& e : scene.getEntities()) {
         
 
-        for (auto& sm : e->getMesh()->subMeshes) {
+        for (auto& sm : assetManager.getMesh(e->getMeshID())->subMeshes) {
             float r = sm.getBoundingRadius();
             glm::vec3 pos = e->getTransform().position;
 

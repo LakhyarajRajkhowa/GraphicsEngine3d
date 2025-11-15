@@ -3,7 +3,7 @@
 namespace Lengine {
     void SceneRenderer::adjustToScale() {
         for (auto& entity : scene.getEntities()) {
-            for (auto& sm : entity.get()->getMesh()->subMeshes) {
+            for (auto& sm : assetManager.getMesh(entity.get()->getMeshID())->subMeshes) {
                 float radius = sm.getBoundingRadius();
                 if (radius > 1.0f || radius < 0.1f) {
                     float scaleFactor = (1.0f / radius);
@@ -36,7 +36,7 @@ namespace Lengine {
     void SceneRenderer::initScene() {
      
         scene.createEntity("cube",
-            assetManager.loadMesh("cube", "../assets/obj/cube.obj"),
+            UUID(0),
             assetManager.loadShader("cube", "../assets/Shaders/default.vert", "../assets/Shaders/default.frag")
         );
 
@@ -45,13 +45,15 @@ namespace Lengine {
             assetManager.loadShader("sun", "../assets/Shaders/lightSource.vert", "../assets/Shaders/lightSource.frag")
 
         );
+        
+        scene.getEntityByName("sun")->getTransform().position += glm::vec3(20.0f);
    
  
     }
     void SceneRenderer::renderScene() {
 
         gizmoRenderer.drawGizmoGrid();
-        renderer.renderScene(scene, camera);
+        renderer.renderScene(scene, camera, assetManager);
 
       
         //gizmoRenderer.drawGizmoSpheres();

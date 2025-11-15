@@ -14,6 +14,7 @@ namespace Lengine {
         SceneHierarchyPanel() = default;
 
         void OnImGuiRender(Camera3d& camera, Scene& scene, AssetManager& assetManager);
+        Entity* getSelectedEntity() { return m_SelectedEntity; }
     private:
         Entity* m_SelectedEntity;
         std::queue<std::string> deletedEntityQueue;

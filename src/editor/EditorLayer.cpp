@@ -14,6 +14,7 @@ namespace Lengine {
         hierarchyPanel(),
         inspectorPanel(),
         consolePanel(buffer),
+        assetPanel("../assets", assetMgr),
         camera(cam),
         scene(scn),
         inputManager(inputMgr),
@@ -39,7 +40,29 @@ namespace Lengine {
             float closest = 999999.0f;
 
             for (auto& e : entities) {
-                for (auto& sm : e->getMesh()->subMeshes) {
+                if (!e->getMeshID()) {
+                    float radius = 1.0f;
+                        if (rayIntersectsSphere(rayOrigin, rayDir, e->getTransform().position, radius)) {
+                            float dist = glm::distance(rayOrigin, e->getTransform().position);
+                            if (dist < closest) {
+                                closest = dist;
+                                hoveredEntity = e.get();
+                                dragPlaneNormal = glm::vec3(0, 1, 0);
+                                dragPlaneY = hoveredEntity->getTransform().position.y;
+
+                                dragStartPoint = RayPlaneIntersection(
+                                    rayOrigin, rayDir,
+                                    dragPlaneNormal, dragPlaneY
+                                );
+
+
+                                dragOffset = hoveredEntity->getTransform().position - dragStartPoint;
+
+                            }
+                        }
+                }
+                else 
+                for (auto& sm : assetManager.getMesh(e->getMeshID())->subMeshes) {
                     float radius = sm.getBoundingRadius() * e->getTransform().scale.x;
                     glm::vec3 centre = e->getTransform().position + sm.getLocalCenter() * e->getTransform().scale;
                     if (rayIntersectsSphere(rayOrigin, rayDir, centre, radius)) {
@@ -195,8 +218,9 @@ namespace Lengine {
         // ✅ Render panels
         viewportPanel.OnImGuiRender(camera);
         hierarchyPanel.OnImGuiRender(camera, scene, assetManager);
-        inspectorPanel.OnImGuiRender();
+        inspectorPanel.OnImGuiRender(hierarchyPanel, assetManager);
         consolePanel.OnImGuiRender();
+        assetPanel.OnImGuiRender();
     }
 
     // -------------------------------------------------------------

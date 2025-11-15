@@ -4,6 +4,8 @@
 #include "../graphics/camera/Camera3d.h"
 #include "../resources/TextureCache.h"
 
+#include "../resources/AssetManager.h"
+
 namespace Lengine {
     class Renderer {
     public:
@@ -11,7 +13,7 @@ namespace Lengine {
         glm::vec3 lightPos;
         float ambientStrength = 0.1f;
 
-        void renderScene(const Scene& scene, Camera3d& camera);
+        void renderScene(const Scene& scene, Camera3d& camera, AssetManager& assetManaegr);
 
         std::unordered_set<std::string> loadedEntity;
     };

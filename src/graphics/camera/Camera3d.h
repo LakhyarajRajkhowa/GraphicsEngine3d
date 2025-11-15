@@ -43,6 +43,8 @@ namespace Lengine {
         void applyGravity();
         bool _applyGravity;
 
+        float speedFactor = 10.0f;
+
     };
 
 }

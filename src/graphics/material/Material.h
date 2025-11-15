@@ -8,6 +8,7 @@
 namespace Lengine {
     class Material {
     private:
+        std::string name;
         glm::vec3 diffuseColor;   // Kd
         glm::vec3 ambientColor;   // Ka
         glm::vec3 specularColor;  // Ks

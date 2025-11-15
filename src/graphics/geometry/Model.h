@@ -3,6 +3,8 @@
 
 #include "../resources/LoadOBJ.h"
 
+#include "../utils/filePath.h"
+
 namespace Lengine {
 	class Model {
 	public:

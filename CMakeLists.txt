@@ -77,7 +77,10 @@ file(GLOB_RECURSE UI_SRC
     "src/ui/*.cpp"
     "src/ui/*.h"
 )
-
+file(GLOB_RECURSE UTILS_SRC
+    "src/utils/*.h"
+    "src/utils/*.cpp"
+)
 file(GLOB_RECURSE EXTERNAL_SRC
     "src/external/picopng.h"
     "src/external/tinyfiledialogs.h"
@@ -85,6 +88,7 @@ file(GLOB_RECURSE EXTERNAL_SRC
     "src/external/tinyfiledialogs.c"
     "src/external/json.hpp"
 )
+
 
 set(MAIN_SRC src/main.cpp)
 
@@ -100,6 +104,7 @@ source_group(TREE ${CMAKE_SOURCE_DIR}/src PREFIX "" FILES
     ${RESOURCES_SRC}
     ${SCENE_SRC}
     ${UI_SRC}
+    ${UTILS_SRC}
     ${EXTERNAL_SRC}
 )
 
@@ -118,6 +123,7 @@ add_executable(${PROJECT_NAME}
     ${RESOURCES_SRC}
     ${SCENE_SRC}
     ${UI_SRC}
+    ${UTILS_SRC}
     ${EXTERNAL_SRC}
     ${IMGUI_SOURCES}
 )

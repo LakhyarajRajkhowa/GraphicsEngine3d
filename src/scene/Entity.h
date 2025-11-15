@@ -9,15 +9,19 @@
 #include "../graphics/camera/Camera3d.h"
 #include "../scene/Transform.h"
 
+#include "../utils/UUID.h"
+
 namespace Lengine {
 	class Entity {
 	public:
-		Entity(const std::string& n, Mesh* m, Material* mat)
-			: name(n), mesh(m), material(mat) {
+		Entity(const std::string& n, UUID mID, Material* mat)
+			: name(n), meshID(mID), material(mat) {
 		}
 		
 		const std::string& getName() const { return name; }
-		Mesh* getMesh() const { return mesh; }
+		void setName(const std::string& newName) { name = newName; }
+		UUID getMeshID() const { return meshID; }
+		void setMeshID(const UUID& id) { meshID = id; }
 
 		
 		Material* getMaterial() const { return material; }
@@ -33,7 +37,7 @@ namespace Lengine {
 		bool isMovable = true;
 	private:
 		std::string name;
-		Mesh* mesh = nullptr;
+		UUID meshID;
 		Material* material = nullptr;
 		Transform transform;
         

@@ -2,6 +2,13 @@
 using namespace Lengine;
 
 void SceneHierarchyPanel::OnImGuiRender(Camera3d& camera, Scene& scene, AssetManager& assetManager) {
+    
+    // Delete queued entities
+    while (!deletedEntityQueue.empty()) {
+        scene.removeEntity(deletedEntityQueue.front());
+        deletedEntityQueue.pop();
+    }
+    
     ImGui::Begin("Hierarchy");
 
     if (ImGui::Button(camera.isFixed ? "Fix Camera: ON" : "Fix Camera: OFF"))
@@ -28,8 +35,11 @@ void SceneHierarchyPanel::OnImGuiRender(Camera3d& camera, Scene& scene, AssetMan
 
          
             if (ImGui::BeginPopupContextItem(entity->getName().c_str())) {
-                if (ImGui::MenuItem("Delete"))
+                if (ImGui::MenuItem("Delete")) {
                     deletedEntityQueue.push(entity->getName());
+                    m_SelectedEntity = nullptr;
+                }
+                    
 
                 if (ImGui::MenuItem("Rename")) {
                     // Rename logic placeholder
@@ -41,11 +51,7 @@ void SceneHierarchyPanel::OnImGuiRender(Camera3d& camera, Scene& scene, AssetMan
         ImGui::TreePop();
     }
 
-    // Delete queued entities
-    while (!deletedEntityQueue.empty()) {
-        scene.removeEntity(deletedEntityQueue.front());
-        deletedEntityQueue.pop();
-    }
+   
 
     ImGui::End();
 
