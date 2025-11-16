@@ -10,11 +10,11 @@ namespace Lengine {
         AssetManager& assetMgr,
         Window& win
     )
-        : viewportPanel(),     
-        hierarchyPanel(),
-        inspectorPanel(),
+        : viewportPanel(cam),     
+        hierarchyPanel(cam, scn, assetMgr, selectedEntity),
+        inspectorPanel(scn, assetMgr),
         consolePanel(buffer),
-        assetPanel("../assets", assetMgr),
+        assetPanel("../TestGameFolder/assets", assetMgr),
         camera(cam),
         scene(scn),
         inputManager(inputMgr),
@@ -109,16 +109,22 @@ namespace Lengine {
         );
 
         glm::vec3 rayOrigin = camera.getCameraPosition();
-       
+        
+            
+
         checkForHoveredEntity(rayDir, rayOrigin);
         if (hoveredEntity == nullptr) {
-            confirmSelectedEntity = false;
-            selectedEntity = nullptr;
+            for (auto& entity : scene.getEntities()) {
+                entity->isSelected = false;
+            }
+            selectedEntity = nullptr;        
             return;
         }
-            
+        for (auto& other : scene.getEntities()) {
+            other->isSelected = false;
+        }
         selectedEntity = hoveredEntity;
-        confirmSelectedEntity = true;
+        selectedEntity->isSelected = true;
 
         
     }
@@ -209,23 +215,20 @@ namespace Lengine {
 
         BeginDockspace();
 
-        // Build layout on first frame
         if (!layoutInitialized) {
            // SetupDefaultLayout(); 
             layoutInitialized = true;
         }
 
-        // ✅ Render panels
-        viewportPanel.OnImGuiRender(camera);
-        hierarchyPanel.OnImGuiRender(camera, scene, assetManager);
-        inspectorPanel.OnImGuiRender(hierarchyPanel, assetManager);
+        //  Render panels
+        viewportPanel.OnImGuiRender();
+        hierarchyPanel.OnImGuiRender();
+        inspectorPanel.OnImGuiRender();
         consolePanel.OnImGuiRender();
         assetPanel.OnImGuiRender();
     }
 
-    // -------------------------------------------------------------
     // Dockspace
-    // -------------------------------------------------------------
     void EditorLayer::BeginDockspace() {
 
         ImGuiWindowFlags window_flags =
@@ -256,9 +259,8 @@ namespace Lengine {
         ImGui::End();
     }
 
-    // -------------------------------------------------------------
-    // Default Layout (Unity-style)
-    // -------------------------------------------------------------
+    
+    // Default Layout 
     void EditorLayer::SetupDefaultLayout() {
 
         ImGuiID dockspace_id = ImGui::GetID("MainDockspaceID");
@@ -290,4 +292,3 @@ namespace Lengine {
     }
 
 }
-////////////////////

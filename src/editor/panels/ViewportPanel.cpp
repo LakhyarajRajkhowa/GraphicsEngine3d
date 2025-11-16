@@ -2,17 +2,16 @@
 #include <iostream>
 namespace Lengine {
 
-    ViewportPanel::ViewportPanel()
-        : m_Framebuffer(1280, 720) 
+    ViewportPanel::ViewportPanel(Camera3d& cam)
+		: m_Framebuffer(1280, 720), camera(cam)
     {
     }
 
-    void ViewportPanel::OnImGuiRender(Camera3d& camera)
+    void ViewportPanel::OnImGuiRender()
     {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("Viewport");
         ImGui::Separator();
-
         // FPS 
         ImGui::Begin("Performance");
 
@@ -35,8 +34,7 @@ namespace Lengine {
         m_Focused = ImGui::IsWindowFocused();
         m_Hovered = ImGui::IsWindowHovered();
 
-      //  ImVec2 avail = ImGui::GetContentRegionAvail();
-       // m_ViewportSize = { avail.x, avail.y };
+
 
         if (m_ViewportSize.x > 0 && m_ViewportSize.y > 0)
         {

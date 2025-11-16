@@ -57,7 +57,7 @@ void main()
     vec3 radiance = lightColor;
     vec3 color = (diffuse + Fspec) * radiance + ambientTerm;
 
-    // selection states (keep your logic)
+    // selection states 
     vec4 outColor = vec4(color, baseColor.a);
     if (state == 1) {
         outColor.rgb += vec3(0.2); // brighten

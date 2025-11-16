@@ -13,6 +13,7 @@ namespace Lengine {
     struct MetaFile {
         UUID uuid;
         std::string type;
+        std::string source;
         std::unordered_map<std::string, std::string> importSettings;
     };
 
@@ -43,6 +44,9 @@ namespace Lengine {
                 else if (line.find("type:") != std::string::npos) {
                     meta.type = line.substr(line.find(":") + 1);
                 }
+                else if (line.find("source:") != std::string::npos) {
+                    meta.source = line.substr(line.find(":") + 1);
+                }
             }
 
             return meta;
@@ -53,6 +57,7 @@ namespace Lengine {
 
             file << "uuid: " << meta.uuid.value() << "\n";
             file << "type: " << meta.type << "\n";
+            file << "source: " << meta.source << "\n";
 
             for (auto& [key, val] : meta.importSettings) {
                 file << key << ": " << val << "\n";

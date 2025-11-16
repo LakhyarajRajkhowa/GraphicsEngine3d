@@ -18,10 +18,12 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera, AssetManager& a
 
         GLSLProgram* shader = material->getShader();
         shader->use();
+
+        // scale to fit 
         if (loadedEntity.find(entity->getName()) == loadedEntity.end()) {
             for (auto& sm : mesh->subMeshes) {
                 float radius = sm.getBoundingRadius();
-                if (radius > 1.0f || radius < 0.1f) {
+                if (radius > 2.0f || radius < 1.0f) {
                     float scaleFactor = (1.0f / radius);
                    
                     auto& scale = entity->getTransform().scale;
@@ -32,7 +34,17 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera, AssetManager& a
             }
             loadedEntity.insert(entity->getName());
         }
-        
+
+        // highlight on selection
+        if (entity->isSelected) {
+           
+            shader->setInt("state", 1);
+        }
+        else {
+            shader->setInt("state", 0);
+        }
+
+
         // transforms
         glm::mat4 model = entity->getTransformMatrix();
         shader->setMat4("model", model);
@@ -49,15 +61,9 @@ void Renderer::renderScene(const Scene& scene, Camera3d& camera, AssetManager& a
         // material 
         material->apply();
 
-        // draw
-
-        
+        // draw  
         mesh->draw();
 
         shader->unuse();
     }
 }
-
-
-
-////////////

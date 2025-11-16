@@ -12,6 +12,7 @@ uniform float fadeDistance = 100.0; // e.g. 100.0
 float minorLineThickness = 1.0;
 float majorLineThickness = 0.2;
 
+uniform int state;
 
 void main()
 {
@@ -54,6 +55,11 @@ void main()
     // Z-axis (X=0): Blue
     float zAxis = smoothstep(0.0, axisThickness, abs(worldPos.x));
     color = mix(vec3(0.0, 0.0, 1.0), color, zAxis);
+
+    // selection state
+    if(state == 1){
+        color.rgb += vec3(0.3);
+    }
 
     FragColor = vec4(color * fade, 1.0);
 }

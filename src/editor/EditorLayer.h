@@ -46,8 +46,6 @@ namespace Lengine {
         void SetupDefaultLayout();
 
         // Selection state
-        bool confirmSelectedEntity = false;
-        Entity* confirmedSelectedEntity = nullptr;
         Entity* selectedEntity = nullptr;
         Entity* hoveredEntity = nullptr;
 

@@ -28,12 +28,9 @@ void main()
 
     // for object select/unselect
     if (state == 1) {
-        color.rgb += vec3(0.2);
+        color.rgb += vec3(0.1, 0.2, 0.1);
     }
-    else if (state == 2) {
-        color.rgb += vec3(0.4);
-    }
-
+   
     // ambient lightning
     vec3 ambient = ambientStrength * lightColor;
     

@@ -399,16 +399,16 @@ namespace Lengine {
 
     inline int assimpLoader(const std::string& path, Mesh& mesh) {
         Assimp::Importer importer;
-
         const aiScene* scene = importer.ReadFile(path,
             aiProcess_Triangulate | aiProcess_FlipUVs | aiProcess_GenNormals);
-
+        
         if (!scene || scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode) {
             std::cerr << "Assimp error: " << importer.GetErrorString() << std::endl;
             return -1;
+
         }
 
-        std::cout << "Model loaded successfully!" << std::endl;
+        std::cout << "Model loaded successfully! " << path<<std::endl;
 
         if (scene && scene->mRootNode) {
             for (unsigned int i = 0; i < scene->mNumMeshes; i++) {

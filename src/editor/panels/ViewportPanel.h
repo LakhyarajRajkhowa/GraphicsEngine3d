@@ -13,13 +13,14 @@
 #include "../graphics/renderer/Framebuffer.h"
 
 #include "../utils/fps.h"
+#include "../utils/imGuiScreens.h"
 namespace Lengine {
 
     class ViewportPanel {
     public:
-        ViewportPanel();
+        ViewportPanel(Camera3d& camera);
 
-        void OnImGuiRender(Camera3d& camera);
+        void OnImGuiRender();
 
         // Access framebuffer for rendering the scene
         Framebuffer& GetFramebuffer() { return m_Framebuffer; }
@@ -39,6 +40,8 @@ namespace Lengine {
         float getDeltaTime() const { return deltaTime; }
 
     private:
+        Camera3d& camera;
+
         Framebuffer m_Framebuffer;
         float offsetValueX = 0.14f;
         float offsetValueY = -0.1f;

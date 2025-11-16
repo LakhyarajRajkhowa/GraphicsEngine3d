@@ -11,10 +11,15 @@ namespace Lengine {
 
     class SceneHierarchyPanel {
     public:
-        SceneHierarchyPanel() = default;
+        SceneHierarchyPanel(Camera3d& camera, Scene& scene, AssetManager& assetManager, Entity* selectedEntity) ;
 
-        void OnImGuiRender(Camera3d& camera, Scene& scene, AssetManager& assetManager);
+        void OnImGuiRender();
+        void createNewModel();
         Entity* getSelectedEntity() { return m_SelectedEntity; }
+    private:
+        Camera3d& camera;
+        Scene& scene;
+        AssetManager& assetManager;
     private:
         Entity* m_SelectedEntity;
         std::queue<std::string> deletedEntityQueue;
