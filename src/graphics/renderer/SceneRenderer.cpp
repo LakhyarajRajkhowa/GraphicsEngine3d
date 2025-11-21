@@ -7,8 +7,10 @@ namespace Lengine {
         glCullFace(GL_BACK);
         glFrontFace(GL_CCW);
 
-        gizmoRenderer.initGizmo();
+        assetManager.LoadAllMetaFiles("../assets");
 
+        gizmoRenderer.initGizmo();
+        
     }
 
     void SceneRenderer::clearFrame(const glm::vec4& clearColor) {
@@ -17,31 +19,31 @@ namespace Lengine {
     }
 
     void SceneRenderer::initScene() {
-     
+       
         scene.createEntity("cube",
-            assetManager.loadMesh("cube", "../assets/obj/cube.obj"),
-            assetManager.loadShader("cube", "../assets/Shaders/default.vert", "../assets/Shaders/default.frag")
+            UUID(3190633498160195690) // uuid of cube
         );
-
+        
         scene.createEntity("sun",
-            assetManager.loadMesh("sun", "../assets/obj/sphere.obj"),
-            assetManager.loadShader("sun", "../assets/Shaders/lightSource.vert", "../assets/Shaders/lightSource.frag")
-
+          UUID(9343755805681254094) // uuid of sphere
         );
         
         scene.getEntityByName("sun")->getTransform().position += glm::vec3(20.0f);
         
-
  
     }
     void SceneRenderer::renderScene() {
-        
-            gizmoRenderer.drawGizmoGrid();
-            renderer.renderScene(scene, camera, assetManager);
-        
-       
+        double ms = ImGui::GetTime();
+        double s = ms / 1.0f;
+        if (renderer.changeColor) {
+            renderer.lightColor.x = sin(s * 2.0f);
+            renderer.lightColor.y = sin(s * 0.7f);
+            renderer.lightColor.z = sin(s * 1.3f);
+        }       
 
-        //gizmoRenderer.drawGizmoSpheres();
+        gizmoRenderer.drawGizmoGrid();
+        renderer.renderScene(scene, camera, assetManager);
+        gizmoRenderer.drawGizmoSpheres();
 
     }
 

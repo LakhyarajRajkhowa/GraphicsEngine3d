@@ -9,7 +9,7 @@ namespace Lengine {
   
     inline void gizmoSphereInit(AssetManager& assetManager) {
        
-        gizmoSphere = *assetManager.loadMesh("sphere", "../assets/obj/sphere.obj");   
+        gizmoSphere = *assetManager.importAndLoadMesh("sphere", "../assets/obj/sphere.obj");   
         gizmoShader.compileShaders("../assets/Shaders/boundingSphere.vert", "../assets/Shaders/boundingSphere.frag");
         gizmoShader.linkShaders();
     }

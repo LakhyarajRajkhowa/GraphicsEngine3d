@@ -103,6 +103,11 @@ namespace Lengine {
                 case SDLK_ESCAPE:
                     isFixed = !isFixed;
                     break;
+                case SDLK_c:
+                    isFixed = !isFixed;
+                    break;
+
+
                 }
             }
 

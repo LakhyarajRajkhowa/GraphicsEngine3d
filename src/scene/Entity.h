@@ -14,8 +14,8 @@
 namespace Lengine {
 	class Entity {
 	public:
-		Entity(const std::string& n, UUID mID, Material* mat)
-			: name(n), meshID(mID), material(mat) {
+		Entity(const std::string& n, UUID mID)
+			: name(n), meshID(mID) {
 		}
 		
 		const std::string& getName() const { return name; }
@@ -24,7 +24,6 @@ namespace Lengine {
 		void setMeshID(const UUID& id) { meshID = id; }
 
 		
-		Material* getMaterial() const { return material; }
 		Transform& getTransform() {
 			return transform;
 		}
@@ -37,10 +36,10 @@ namespace Lengine {
 		bool isMovable = true;
 	private:
 		std::string name;
-		UUID meshID;
-		Material* material = nullptr;
 		Transform transform;
-        
+		UUID meshID;
+
+
 	};
 }
 

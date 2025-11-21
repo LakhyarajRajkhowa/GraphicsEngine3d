@@ -27,7 +27,8 @@ public:
 	float cameraPosZ = 0;
 	float cameraFov = 45;
 
+	std::string gameFolderPath ;
 
-	const bool loadSettings(const std::string filePath);
+	const bool loadSettings();
 };
 

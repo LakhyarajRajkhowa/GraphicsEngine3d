@@ -24,8 +24,7 @@ void SceneHierarchyPanel::OnImGuiRender() {
     
     ImGui::Begin("Hierarchy");
 
-    if (ImGui::Button(camera.isFixed ? "Fix Camera: ON" : "Fix Camera: OFF"))
-        camera.isFixed = !camera.isFixed;
+   
 
     ImGui::Separator();
     bool sceneOpen = ImGui::TreeNodeEx("Scene", ImGuiTreeNodeFlags_DefaultOpen);
@@ -36,7 +35,12 @@ void SceneHierarchyPanel::OnImGuiRender() {
             ImGui::OpenPopup("Add New Entity");
             openModelPopup = true;
         }
+        
+        if (ImGui::MenuItem("Save")) {
+            assetManager.saveScene(scene, "../TestGameFolder/scenes" );
+        }
         ImGui::EndPopup();
+        
     }
     if (openModelPopup)
         {
@@ -95,12 +99,7 @@ void SceneHierarchyPanel::createNewModel() {
 
                 scene.createEntity(
                     EntityName,
-                    UUID(0),
-                    assetManager.loadShader(
-                        "default",
-                        "../assets/Shaders/default.vert",
-                        "../assets/Shaders/default.frag"
-                    )
+                    UUID(0)                   
                 );
 
                 ImGui::CloseCurrentPopup();

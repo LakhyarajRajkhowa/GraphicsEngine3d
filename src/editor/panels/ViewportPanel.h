@@ -21,6 +21,7 @@ namespace Lengine {
         ViewportPanel(Camera3d& camera);
 
         void OnImGuiRender();
+        void RenderFullscreen();
 
         // Access framebuffer for rendering the scene
         Framebuffer& GetFramebuffer() { return m_Framebuffer; }
@@ -35,9 +36,9 @@ namespace Lengine {
         ImVec2 ViewportPanel::getMousePosInViewport() const { return mouseInViewport; }
         ImVec2 ViewportPanel::getMousePosInImage() const { return mouseInImage; }
 
-        bool fixCamera = true;
+        bool fixCamera = false;
+        bool viewportFullscreen = true;
 
-        float getDeltaTime() const { return deltaTime; }
 
     private:
         Camera3d& camera;
@@ -55,10 +56,7 @@ namespace Lengine {
 
         bool m_Focused = false; 
         bool m_Hovered = false;  
-    private:
-        int targetFPS = 144; // my 144 Hz monitor
-        float deltaTime;
-        bool limitFPS = true;
+   
 
     };
 

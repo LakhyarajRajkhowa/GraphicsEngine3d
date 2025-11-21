@@ -6,16 +6,14 @@ namespace Lengine {
 		sceneRenderer(camera, scene, assetManager),
 		inputHandler(camera, inputManager, scene, window, isRunning),
 		UI(assetManager, scene, sceneRenderer.renderer),
-		imguiLayer(inputManager, isRunning)
+		imguiLayer(inputManager, isRunning),
+		assetManager(settings)
 		
 	{
 
 	}
 	void GraphicsEngine::initSettings() {
-		std::filesystem::path exePath = std::filesystem::current_path();
-		std::filesystem::path configPath = exePath / "../config.json";
-		configPath = std::filesystem::absolute(configPath);
-		settings.loadSettings(configPath.string());
+		settings.loadSettings();
 	}
 	void GraphicsEngine::run() {
 		initSystems();
@@ -42,8 +40,8 @@ namespace Lengine {
 			camera,
 			inputManager,
 			assetManager,
-			window
-			
+			window,
+			sceneRenderer.renderer	
 		);
 		camera.init(
 			editorLayer->GetViewportPanel().GetViewportSize().x,
@@ -69,8 +67,7 @@ namespace Lengine {
 		while (isRunning) {
 
 			inputManager.update();
-			inputHandler.handleInputs(imguiLayer, viewportPanel, *editorLayer);
-			//editorLayer->OnUpdate();
+			inputHandler.handleInputs(imguiLayer, *editorLayer);
 			imguiLayer.beginFrame();
 
 			//  Framebuffer captures the frame of the game screen

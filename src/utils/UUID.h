@@ -24,6 +24,7 @@ namespace Lengine {
         bool operator==(const UUID& other) const {
             return m_UUID == other.m_UUID;
         }
+        uint64_t toUint64() const { return m_UUID; }
 
     private:
         uint64_t m_UUID;

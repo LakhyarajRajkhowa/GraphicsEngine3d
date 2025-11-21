@@ -4,9 +4,10 @@ using namespace Lengine;
 
 void AssetManager::LoadAllMetaFiles(const fs::path& root)
 {
+    loadMaterial(UUID(5485914302357758172), "../assets/Materials/defaultMaterial.mtl");
+
     if (!fs::exists(root))
         return;
-
     for (auto& entry : fs::recursive_directory_iterator(root))
     {
         if (!entry.is_regular_file())
@@ -17,16 +18,17 @@ void AssetManager::LoadAllMetaFiles(const fs::path& root)
         // Must end with ".meta"
         if (metaPath.extension() != ".meta")
             continue;
-
-        // Load meta (contains uuid, type, source)
-        MetaFile meta = MetaFileSystem::Load(metaPath.string());
-
-        // Get original file path (remove ".meta")
         fs::path assetPath = metaPath;
-        assetPath.replace_extension("");    // removes .meta → "mesh.obj"
+        assetPath.replace_extension("");
+        // Load meta (contains uuid, type, source)
+        MetaFile meta = MetaFileSystem::Load(assetPath.string());
+
 
         if (assetPath.extension() == ".obj") {
-           // loadMesh(ExtractNameFromPath(assetPath.string()), assetPath.string());
+            loadMesh(meta.uuid, assetPath.string());
+        }
+        if (assetPath.extension() == ".mtl") {
+            loadMaterial(meta.uuid, assetPath.string());
         }
     }
 }
@@ -35,7 +37,11 @@ void AssetManager::LoadAllMetaFiles(const fs::path& root)
 Mesh* AssetManager::getMesh(const UUID& id) {
     return meshes[id].get();
 }
-UUID AssetManager::getUUID(const std::string& name) {
+
+Material* AssetManager::getMaterial(const UUID& id) {
+    return materials[id].get();
+}
+UUID AssetManager::getMeshUUID(const std::string& name) {
     for (auto& [uuid, mesh] : meshes)
     {
         if (mesh && mesh->name == name)
@@ -44,7 +50,16 @@ UUID AssetManager::getUUID(const std::string& name) {
 
     return UUID::Null;
 }
-void AssetManager::loadMesh2(const UUID& uuid, const std::string& path)
+UUID AssetManager::getMaterialUUID(const std::string& name) {
+    for (auto& [uuid, material] : materials)
+    {
+        if (material && material->name == name)
+            return uuid;
+    }
+
+    return UUID::Null;
+}
+void AssetManager::loadMesh(const UUID& uuid, const std::string& path)
 {
     std::string meshName = ExtractNameFromPath(path);
     UUID id = uuid;
@@ -54,13 +69,30 @@ void AssetManager::loadMesh2(const UUID& uuid, const std::string& path)
     Model model;
     model.loadModel(meshName, newPath, ptr);
 
+    
+    for (auto& sm : ptr.get()->subMeshes) {
+        if (!sm.material) {
+            sm.material = getMaterial(UUID(5485914302357758172)); // defaultMaterial UUID
+            
+        }
+    }
+    
     meshes[uuid] = ptr;
 }
+void AssetManager::loadMaterial(const UUID& uuid, const std::string& path)
+{
+    std::string materialName = ExtractNameFromPath(path);
+    UUID id = uuid;
+    std::shared_ptr<Material> materialPtr;
+    GLSLProgram* shader = loadShader("default", "../assets/Shaders/defaultShader.vert", "../assets/Shaders/defaultShader.frag");
+    materialPtr = std::make_shared<Material>(shader);
+    materials[uuid] = materialPtr;
 
+   
+}
 
 UUID AssetManager::importMesh(const std::string& path) {
     MetaFile meta;
-    
     if (!MetaFileSystem::HasMeta(path)) {
         meta.uuid = UUID();
         meta.type = "mesh";
@@ -74,15 +106,12 @@ UUID AssetManager::importMesh(const std::string& path) {
 
     return meta.uuid;
 }
-
-UUID AssetManager::loadMesh(const std::string& name, const std::string& path) {
+UUID AssetManager::importMaterial(const std::string& path) {
     MetaFile meta;
-
-     
     if (!MetaFileSystem::HasMeta(path)) {
         meta.uuid = UUID();
-        meta.type = "mesh";
-        meta.source = ExtractFileNameFromPath(path);
+        meta.type = "material";
+        meta.source = NormalizePath(path);
 
         MetaFileSystem::Save(path, meta);
     }
@@ -90,16 +119,20 @@ UUID AssetManager::loadMesh(const std::string& name, const std::string& path) {
         meta = MetaFileSystem::Load(path);
     }
 
-    UUID id = meta.uuid;
-
-    std::shared_ptr<Mesh> meshPtr;
-    Model model;
-    model.loadModel(name, path, meshPtr);
-    meshes[id] = meshPtr;
-
-    return id;
+    return meta.uuid;
 }
 
+UUID AssetManager::importAndLoadMesh(const std::string& name, const std::string& path) {
+    UUID id = importMesh(path);
+    loadMesh(id, path);
+    return id;
+}
+UUID AssetManager::importAndLoadMaterial(const std::string& name, const std::string& path) {
+    
+    UUID id = importMaterial(path);
+    loadMaterial(id, path);
+    return id;
+}
 
 GLSLProgram* AssetManager::loadShader(const std::string& name,
     const std::string& vert,
@@ -121,15 +154,13 @@ GLSLProgram* AssetManager::getShader(const std::string& name) {
 }
 
 GLTexture* AssetManager::loadTexture(const std::string& name , const std::string& path) {
-
-
     MetaFile meta;
 
     if (!MetaFileSystem::HasMeta(path)) {
         meta.uuid = UUID();
         meta.type = "texture";
         meta.source = ExtractFileNameFromPath(path);
-        MetaFileSystem::Save(path, meta);
+        MetaFileSystem::Save(name, meta);
     }
     else {
         meta = MetaFileSystem::Load(path);
@@ -142,4 +173,96 @@ GLTexture* AssetManager::loadTexture(const std::string& name , const std::string
     textures[id] = tex;
     return tex.get();
  
+}
+
+
+void AssetManager::saveModelFile(const UUID& meshUUID)
+{
+    auto it = meshes.find(meshUUID);
+    if (it == meshes.end() || !it->second) {
+        std::cerr << "saveModelFile: No mesh found for UUID "
+            << meshUUID.value() << std::endl;
+        return;
+    }
+
+    std::shared_ptr<Mesh> meshPtr = it->second;
+    Mesh* mesh = meshPtr.get();
+
+   
+    ModelFile modelFile;
+    modelFile.uuid = meshUUID;                 
+    modelFile.type = "model";
+    modelFile.sourceMeshId = meshUUID;     
+
+   
+    for (auto& sm : mesh->subMeshes)
+    {
+        ModelSubmeshInfo info;
+        info.name = sm.getName();
+
+        if (sm.material)
+            info.materialUUID = getMaterialUUID(sm.material->name);
+        else
+            info.materialUUID = UUID::Null;
+
+        modelFile.submeshes.push_back(info);
+    }
+
+  
+    std::string fileName = mesh->name;
+    modelFolderPath = settings.gameFolderPath + "/internal/models";
+    ModelFileSystem::Save(modelFolderPath + "/" + fileName, modelFile);
+
+    std::cout << "Saved model file: " << fileName << ".model" << std::endl;
+
+
+}
+
+void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
+{
+    // Build output file path automatically
+    std::filesystem::path dir(folderPath);
+
+    // Ensure folder exists
+    if (!std::filesystem::exists(dir))
+        std::filesystem::create_directories(dir);
+
+    std::string sceneName = scene.getName();
+    std::string fileName = sceneName + ".json";
+
+    std::filesystem::path finalPath = dir / fileName;
+
+    // --- JSON BUILDING ---
+    json jScene;
+    jScene["entities"] = json::array();
+
+    const auto& entities = scene.getEntities();
+
+    for (const auto& entityPtr : entities)
+    {
+        auto entity = entityPtr.get();
+        json jEntity;
+
+        jEntity["name"] = entity->getName();
+
+        const auto& transform = entity->getTransform();
+
+        jEntity["transform"] = {
+            { "position", { transform.position.x, transform.position.y, transform.position.z }},
+            { "rotation", { transform.rotation.x, transform.rotation.y, transform.rotation.z }},
+            { "scale",    { transform.scale.x,    transform.scale.y,    transform.scale.z }}
+        };
+
+        jEntity["modelID"] = entity->getMeshID().toUint64();
+
+        jScene["entities"].push_back(jEntity);
+    }
+
+    // --- WRITE FILE ---
+    std::ofstream file(finalPath.string());
+    file << jScene.dump(4);
+
+    // --- SUCCESS MESSAGE ---
+    std::cout << "Saved \"" << sceneName << "\" successfully at: "
+        << finalPath.string() << std::endl;
 }

@@ -4,23 +4,11 @@ namespace Lengine {
 
   
 
-    Entity* Scene::createEntity(const std::string& name, UUID meshID, GLSLProgram* shader, GLTexture* texture) {
-       
-        if (!shader) shader = defaultShader;
-
-
-        Material* material = new Material(shader);
-        if (texture) {
-            material->albedoTexture = texture;
-            material->useTexture = true;
-        }
-
-
-        auto entity = std::make_unique<Entity>(name, meshID, material);
+    Entity* Scene::createEntity(const std::string& name, UUID meshID) {
+        
+        auto entity = std::make_unique<Entity>(name, meshID);
         Entity* entityPtr = entity.get();
         entities.push_back(std::move(entity));
-
-        
 
         return entityPtr;
     }

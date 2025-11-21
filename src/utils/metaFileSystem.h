@@ -5,9 +5,6 @@
 #include "UUID.h"
 
 
-
-
-
 namespace Lengine {
 
     struct MetaFile {

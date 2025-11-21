@@ -8,7 +8,7 @@
 namespace Lengine {
     class Material {
     private:
-        std::string name;
+        
         glm::vec3 diffuseColor;   // Kd
         glm::vec3 ambientColor;   // Ka
         glm::vec3 specularColor;  // Ks
@@ -16,18 +16,23 @@ namespace Lengine {
         std::string diffuseMap;   // map_Kd
         std::string normalMap;    // map_bump
 
-        GLSLProgram* shader = nullptr;
-        glm::vec3 objectColor = glm::vec3(0.54, 0.54, 0.54);
+        
+        
         float metallic = 0.0f;
         float roughness = 0.0f;
 
     public:
+        std::string name;
+        GLSLProgram* shader = nullptr;
+        GLTexture* albedoTexture{};
+
+        glm::vec3 objectColor = glm::vec3(0.54, 0.54, 0.54);
+
         Material(GLSLProgram* shaderProgram)
             : shader(shaderProgram) {
         }
 
         GLSLProgram* getShader() const { return shader; }
-        GLTexture* albedoTexture{};
         bool useTexture = false;
 
         void apply() {

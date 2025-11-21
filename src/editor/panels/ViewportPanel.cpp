@@ -1,6 +1,7 @@
 ﻿#include "ViewportPanel.h"
 #include <iostream>
-namespace Lengine {
+
+using namespace Lengine;
 
     ViewportPanel::ViewportPanel(Camera3d& cam)
 		: m_Framebuffer(1280, 720), camera(cam)
@@ -12,20 +13,11 @@ namespace Lengine {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGui::Begin("Viewport");
         ImGui::Separator();
-        // FPS 
-        ImGui::Begin("Performance");
-
-        ImGui::Checkbox("Limit FPS", &limitFPS);
-        ImGui::SliderInt("Target FPS", &targetFPS, 30, 240); // FPS slider
-
-        FrameStats stats = LimitFPS(targetFPS, limitFPS);
-        deltaTime = stats.deltaTime;
-
-        ImGui::Text("FPS: %.1f", stats.fps);
-        ImGui::Text("Frame Time: %.2f ms", stats.msPerFrame);
-        ImGui::Separator();
-
-        ImGui::End();
+         
+        if (ImGui::Button(camera.isFixed ? "Fix Camera: ON" : "Fix Camera: OFF"))
+            camera.isFixed = !camera.isFixed;
+        if (ImGui::Button("Fullscreen Mode"))
+            viewportFullscreen = true;
 
         ImVec2 avail = ImGui::GetContentRegionAvail();
         m_ViewportSize = { avail.x, avail.y };
@@ -69,4 +61,42 @@ namespace Lengine {
         ImGui::PopStyleVar();
     }
 
+
+
+void ViewportPanel::RenderFullscreen()
+{
+    camera.isFixed = false;
+    ImGuiViewport* vp = ImGui::GetMainViewport();
+
+    ImGui::SetNextWindowPos(vp->Pos);
+    ImGui::SetNextWindowSize(vp->Size);
+    ImGui::SetNextWindowViewport(vp->ID);
+
+    ImGuiWindowFlags flags =
+        ImGuiWindowFlags_NoDecoration |
+        ImGuiWindowFlags_NoMove |
+        ImGuiWindowFlags_NoResize |
+        ImGuiWindowFlags_NoNavFocus |
+        ImGuiWindowFlags_NoDocking;
+        
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+
+    ImGui::Begin("ViewportFullscreen", nullptr, flags);
+
+    // ESC to exit fullscreen
+    if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+        viewportFullscreen = false;
+
+    // Draw the framebuffer fullscreen
+    GLuint texID = m_Framebuffer.GetColorAttachment();
+
+    ImGui::Image(
+        (void*)(intptr_t)texID,
+        ImGui::GetContentRegionAvail(),
+        ImVec2(0, 1),
+        ImVec2(1, 0)
+    );
+
+    ImGui::End();
+    ImGui::PopStyleVar();
 }

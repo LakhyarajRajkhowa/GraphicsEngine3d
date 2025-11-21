@@ -1,10 +1,11 @@
 #include "InspectorPanel.h"
-
+#include "../graphics/renderer/Renderer.h"
 using namespace Lengine;
 
-InspectorPanel::InspectorPanel(Scene& scn, AssetManager& asstMgr) :
+InspectorPanel::InspectorPanel(Scene& scn, AssetManager& asstMgr, Renderer& rndr) :
     scene(scn),
-    assetManager(asstMgr) 
+    assetManager(asstMgr),
+    renderer(rndr)
 {
 }
 
@@ -104,17 +105,7 @@ void InspectorPanel::DrawEntityInspector(Entity* entity, AssetManager& assets)
     // --- Draw a centered box ---
     ImGui::BeginGroup();
 
-    // Full row width
-    float fullWidth = ImGui::GetContentRegionAvail().x;
-
-    // Box style
-    ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.15f, 0.15f, 0.15f, 1));
-    ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.3f, 0.3f, 0.3f, 1));
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 1.0f);
-    ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 5.0f);
-
-    ImGui::BeginChild("MeshBox", ImVec2(fullWidth, 35.0f), true);
-
+   
     // Mesh name string
     std::string meshName = "None";
     UUID meshID = entity->getMeshID();
@@ -123,13 +114,8 @@ void InspectorPanel::DrawEntityInspector(Entity* entity, AssetManager& assets)
         Mesh* mesh = assets.getMesh(meshID);
         meshName = mesh ? mesh->name : "Invalid Mesh";
     }
-
-    // Center text horizontally
-    float textWidth = ImGui::CalcTextSize(meshName.c_str()).x;
-    float offset = (fullWidth - textWidth) * 0.5f;
-    if (offset > 0) ImGui::SetCursorPosX(offset);
-
-    ImGui::Text("%s", meshName.c_str());
+    ImVec2 size = { ImGui::GetContentRegionAvail().x, 30 };
+    ImGui::Button(meshName.c_str(), size);
 
     // --- Drag Drop Target ---
     if (ImGui::BeginDragDropTarget())
@@ -143,7 +129,7 @@ void InspectorPanel::DrawEntityInspector(Entity* entity, AssetManager& assets)
 
             Mesh* mesh = assetManager.getMesh(droppedID);
             if (!mesh) {
-                assetManager.loadMesh2(droppedID, meshPath);
+                assetManager.loadMesh(droppedID, meshPath);
                 mesh = assetManager.getMesh(droppedID);
             }
 
@@ -152,52 +138,61 @@ void InspectorPanel::DrawEntityInspector(Entity* entity, AssetManager& assets)
         ImGui::EndDragDropTarget();
     }
 
-    ImGui::EndChild();
-
-    ImGui::PopStyleVar(2);
-    ImGui::PopStyleColor(2);
-
     ImGui::EndGroup();
 
-    
+    // Lightning
 
+    ImGui::Separator();
+    ImGui::Text("Lightning");
+    ImGui::Separator();
 
+    ImGui::Spacing();
 
-    // ----------- MATERIALS -----------
-    /*
-    if (!entity->meshID.isNull()) {
-        Mesh* mesh = assets.getMesh(entity->meshID);
+    ImGui::Text("Ambient Strength");
+    ImGui::SameLine();
+    ImGui::DragFloat("##AmbientStrength", &renderer.ambientStrength, 0.01f, 0.0f, 1.0f);
 
-        if (mesh) {
-            for (size_t i = 0; i < mesh->subMeshes.size(); i++) {
+    ImGui::Spacing();
 
-                ImGui::PushID((int)i);
-                ImGui::Text("Material %d", (int)i);
-                ImGui::SameLine();
+    ImGui::Text("Specular Strength");
+    ImGui::SameLine();
+    ImGui::DragFloat("##SpecularStrength", &renderer.specularStrength, 0.05f, 0.0f, 5.0f);
 
-                UUID matID = entity->materialIDs[i];
-                if (matID.isNull()) {
-                    ImGui::TextColored(ImVec4(1, 0.4f, 0.4f, 1), "None");
-                }
-                else {
-                    Material* mat = assets.getMaterial(matID);
-                    ImGui::Text("%s", mat ? mat->name.c_str() : "Invalid");
-                }
+    ImGui::Spacing(); 
 
-                // Drag & drop for materials
-                if (ImGui::BeginDragDropTarget()) {
-                    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("ASSET_MATERIAL")) {
-                        UUID newMatID = *(UUID*)payload->Data;
-                        entity->materialIDs[i] = newMatID;
-                    }
-                    ImGui::EndDragDropTarget();
-                }
+    ImGui::Text("Light Color");
+    ImGui::SameLine();
+    ImGui::ColorEdit3("Light Color", glm::value_ptr(renderer.lightColor));
 
-                ImGui::PopID();
-            }
+    ImGui::Spacing();
+
+    if (ImGui::Button(renderer.changeColor ? "Change Color: ON" : "Change Color: OFF")) {
+        renderer.changeColor = !renderer.changeColor;
+        if (!renderer.changeColor) {
+            renderer.lightColor = glm::vec3(1.0f);
         }
-        
     }
-    */
+        
 
+
+    // MATERIALS
+    
+    ImGui::Separator();
+    ImGui::Text("Material");
+    ImGui::Separator();
+
+    ImGui::Spacing();
+    ImGui::Text("Albedo");
+    ImGui::Spacing();
+    if (assetManager.getMesh(entity->getMeshID()))
+        for (auto& sm : assetManager.getMesh(entity->getMeshID())->subMeshes) {
+        
+            ImGui::Text(sm.getName().c_str());
+            ImGui::SameLine();
+            ImGui::ColorEdit3("Light Color: ", glm::value_ptr(sm.getMaterial()->objectColor));
+            ImGui::Spacing();
+
+        }
+
+    
 }

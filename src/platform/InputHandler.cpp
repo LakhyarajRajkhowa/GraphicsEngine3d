@@ -33,17 +33,16 @@ namespace Lengine {
     
     void InputHandler::handleInputs(
         ImGuiLayer& imguiLayer,
-        const ViewportPanel& viewportPanel,
         EditorLayer& editorLayer)
     {
 
         bool imguiCapturesMouse = imguiLayer.wantsCaptureMouse();
         bool imguiCapturesKeyboard = imguiLayer.wantsCaptureKeyboard();
 
-        bool viewportFocused = viewportPanel.IsViewportFocused();
-        bool viewportHovered = viewportPanel.IsViewportHovered();
+        bool viewportFocused = editorLayer.GetViewportPanel().IsViewportFocused();
+        bool viewportHovered = editorLayer.GetViewportPanel().IsViewportHovered();
 
-        const float dt = viewportPanel.getDeltaTime();
+        const float dt = editorLayer.GetPerformancePanel().getDeltaTime();
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             // 1. Send all events to ImGui
@@ -90,19 +89,22 @@ namespace Lengine {
         }
       
         
-        if (camera.isFixed == false)
+        if (camera.isFixed == false )
         {
-            // Enter camera freelook mode
-            ImGui::SetWindowFocus("Viewport");
-
-            SDL_ShowCursor(SDL_DISABLE);
-            SDL_SetRelativeMouseMode(SDL_TRUE);  // lock mouse inside window
 
 
-            if (viewportFocused)
+        
+            if(viewportFocused)
             {
-                ImVec2 pos = editorLayer.GetViewportPanel().GetViewportPos();        // top-left corner
-                ImVec2 size = editorLayer.GetViewportPanel().GetViewportSize();      // size
+                
+
+                // Enter camera freelook mode
+                ImGui::SetWindowFocus("Viewport");
+                SDL_ShowCursor(SDL_DISABLE);
+                SDL_SetRelativeMouseMode(SDL_TRUE);  
+
+                ImVec2 pos = editorLayer.GetViewportPanel().GetViewportPos();        
+                ImVec2 size = editorLayer.GetViewportPanel().GetViewportSize();     
                 int mx, my;
                 SDL_GetRelativeMouseState(&mx, &my);
                 int clampedX = std::clamp(mx, (int)pos.x, (int)(pos.x + size.x - 1));
@@ -114,9 +116,18 @@ namespace Lengine {
                 glm::vec2 relativeMouseCoords = { mx,my };
                 camera.update(dt, relativeMouseCoords);
 
-
-                
             }
+            else {
+                SDL_ShowCursor(SDL_DISABLE);
+                SDL_SetRelativeMouseMode(SDL_TRUE);
+                int mx, my;
+                SDL_GetRelativeMouseState(&mx, &my);
+                glm::vec2 relativeMouseCoords = { mx,my };
+                camera.update(dt, relativeMouseCoords);
+            }
+
+            
+        
         }
         else
         {

@@ -158,7 +158,7 @@ namespace Lengine {
 
         auto pushCurrentSubMeshIfNotEmpty = [&]() {
             if (!buildVerts.empty() && !buildIndices.empty()) {
-                mesh.subMeshes.emplace_back(buildVerts, buildIndices);
+                mesh.subMeshes.emplace_back("defaultName", buildVerts, buildIndices);
                 if (verbose) {
                     std::cout << "[FASTOBJ] Pushed submesh (verts=" << buildVerts.size()
                         << ", indices=" << buildIndices.size() << ")\n";
@@ -374,10 +374,10 @@ namespace Lengine {
                 indices.push_back(face.mIndices[2]);
             }
         }
-
+        std::string name = mesh->mName.C_Str();
         // Construct SubMesh
-        SubMesh engineSubMesh(vertices, indices);
-
+        SubMesh engineSubMesh(name, vertices, indices);
+        
         //clear temp memory
         std::vector<Vertex>().swap(vertices);
         std::vector<uint32_t>().swap(indices);
@@ -413,9 +413,8 @@ namespace Lengine {
         if (scene && scene->mRootNode) {
             for (unsigned int i = 0; i < scene->mNumMeshes; i++) {
                 aiMesh* aMesh = scene->mMeshes[i];
-               
                 mesh.subMeshes.push_back(convertToEngineSubMesh(aMesh));
-
+                
             }
         }
 

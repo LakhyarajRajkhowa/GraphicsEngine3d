@@ -12,9 +12,12 @@
 #include "../editor/panels/InspectorPanel.h"
 #include "../editor/panels/ConsolePanel.h"
 #include "../editor/panels/AssetPanel.h"
+#include "../editor/panels/PerformancePanel.h"
 
 #include "../graphics/geometry/ray.h"
+
 namespace Lengine {
+    
 
     class EditorLayer {
     public:
@@ -24,7 +27,8 @@ namespace Lengine {
             Camera3d& camera,
             InputManager& inputManager,
             AssetManager& assetManager,
-            Window& window);
+            Window& window,
+            Renderer& renderer);
         ~EditorLayer() = default;
 
         void OnAttach();
@@ -33,6 +37,7 @@ namespace Lengine {
 
         // Access viewport panel (camera, input needs this)
         ViewportPanel& GetViewportPanel() { return viewportPanel; }
+        PerformancePanel& GetPerformancePanel() { return performancePanel; }
 
         // Editor manipulation
         void checkForHoveredEntity(const glm::vec3& rayDir, const glm::vec3& rayOrigin);
@@ -41,6 +46,7 @@ namespace Lengine {
         void HandleMouseWheel(const int& mousewheelY);
         void HandleKeyboardShortcuts(const SDL_Keycode& key);
 
+        
     private:
         void BeginDockspace();
         void SetupDefaultLayout();
@@ -68,6 +74,7 @@ namespace Lengine {
         InspectorPanel inspectorPanel;
         ConsolePanel consolePanel;
         AssetPanel assetPanel;
+        PerformancePanel performancePanel;
 
         // External engine systems (not owned)
         Scene& scene;
@@ -75,6 +82,7 @@ namespace Lengine {
         InputManager& inputManager;
         AssetManager& assetManager;
         Window& window;
+        Renderer& renderer;
     private:
         // Data sending to panels
 

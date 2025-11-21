@@ -10,9 +10,7 @@ namespace Lengine {
   
         Entity* createEntity(
             const std::string& name,
-            UUID meshID,
-            GLSLProgram* shader = nullptr,
-            GLTexture* texture = nullptr
+            UUID meshID
         );
 
         const  Entity* getEntityByName(const std::string& name) const;
@@ -23,18 +21,14 @@ namespace Lengine {
             return entities;
         }
         void removeEntity(const std::string& name);
-        void setDefaults(Mesh* mesh, GLSLProgram* shader) {
-            defaultMesh = mesh;
-            defaultShader = shader;
-        }
+       
 
         bool showBoundingSphere = false;
+        const std::string& getName() const { return name; }
     private:
+        std::string name = "scene1";
         std::vector<std::unique_ptr<Entity>> entities;
-        SubMesh* defaultSubMesh = nullptr;
-        Mesh* defaultMesh = nullptr;
 
-        GLSLProgram* defaultShader = nullptr;
     };
 }
 

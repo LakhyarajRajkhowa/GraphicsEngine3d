@@ -8,18 +8,21 @@ namespace Lengine {
         Camera3d& cam,
         InputManager& inputMgr,
         AssetManager& assetMgr,
-        Window& win
+        Window& win,
+        Renderer& rndr
     )
-        : viewportPanel(cam),     
-        hierarchyPanel(cam, scn, assetMgr, selectedEntity),
-        inspectorPanel(scn, assetMgr),
-        consolePanel(buffer),
-        assetPanel("../TestGameFolder/assets", assetMgr),
-        camera(cam),
+        :camera(cam),
         scene(scn),
         inputManager(inputMgr),
         assetManager(assetMgr),
-        window(win)
+        window(win),
+        renderer(rndr),
+        viewportPanel(cam),     
+        hierarchyPanel(cam, scn, assetMgr, selectedEntity),
+        inspectorPanel(scn, assetMgr, rndr),
+        consolePanel(buffer),
+        assetPanel("../TestGameFolder/assets", assetMgr)
+        
     {
     }
 
@@ -31,8 +34,32 @@ namespace Lengine {
         // cleanup if you want later
     }
 
-  
+    void EditorLayer::OnImGuiRender() {
 
+        BeginDockspace();
+
+        if (!layoutInitialized) {
+            // SetupDefaultLayout(); 
+            layoutInitialized = true;
+        }
+
+        //  Render panels
+        if (!viewportPanel.viewportFullscreen) {
+            viewportPanel.OnImGuiRender();
+            hierarchyPanel.OnImGuiRender();
+            inspectorPanel.OnImGuiRender();
+            consolePanel.OnImGuiRender();
+            assetPanel.OnImGuiRender();
+            performancePanel.OnImGuiRender();
+        }
+        else {
+            viewportPanel.RenderFullscreen();
+            performancePanel.OnImGuiRender();
+        }
+
+    }
+
+    //  ENTITY MANIPULATION
     void EditorLayer::checkForHoveredEntity(const glm::vec3& rayDir, const glm::vec3& rayOrigin) {
         hoveredEntity = nullptr;
 
@@ -211,22 +238,7 @@ namespace Lengine {
         }   
     }
 
-    void EditorLayer::OnImGuiRender() {
-
-        BeginDockspace();
-
-        if (!layoutInitialized) {
-           // SetupDefaultLayout(); 
-            layoutInitialized = true;
-        }
-
-        //  Render panels
-        viewportPanel.OnImGuiRender();
-        hierarchyPanel.OnImGuiRender();
-        inspectorPanel.OnImGuiRender();
-        consolePanel.OnImGuiRender();
-        assetPanel.OnImGuiRender();
-    }
+   
 
     // Dockspace
     void EditorLayer::BeginDockspace() {

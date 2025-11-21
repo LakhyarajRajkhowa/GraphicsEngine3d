@@ -1,10 +1,14 @@
 ﻿#include "settings.h"
 
-const bool EngineSettings::loadSettings(const std::string path) {
-    std::ifstream file(path);
+std::filesystem::path exePath = std::filesystem::current_path();
+std::string configPath = (exePath / "../config.json").string();
+
+
+const bool EngineSettings::loadSettings() {
+    std::ifstream file(configPath);
     if (file.fail()) {
-        perror(path.c_str());
-        Lengine::fatalError("Error to open " + path);
+        perror(configPath.c_str());
+        Lengine::fatalError("Error to open " + configPath);
     }
 
     json j;
@@ -33,6 +37,8 @@ const bool EngineSettings::loadSettings(const std::string path) {
     cameraPosZ = j.value("cameraPosX", cameraPosZ);
     cameraFov = j.value("cameraFov", cameraFov);
 
-    std::cout << "Loaded settings from " << path << "\n";
+    gameFolderPath = j.value("gameFolderPath", gameFolderPath);
+
+    std::cout << "Loaded settings from " << configPath << "\n";
     return true;
 }

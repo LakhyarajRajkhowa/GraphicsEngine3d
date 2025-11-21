@@ -23,7 +23,7 @@ namespace Lengine {
 			moveMode = false;
 		}
 
-		void handleInputs(ImGuiLayer& imguiLayer, const ViewportPanel& viewport, EditorLayer& editorLayer);
+		void handleInputs(ImGuiLayer& imguiLayer, EditorLayer& editorLayer);
 		
 		void processEvents(const SDL_Event& event);
 		void moveEntity(glm::vec2 mouseCooords);

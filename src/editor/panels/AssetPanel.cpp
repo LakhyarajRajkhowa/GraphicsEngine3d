@@ -9,6 +9,7 @@ AssetPanel::AssetPanel(const fs::path& root, AssetManager& asstMgr)
     : m_RootPath(root), m_CurrentPath(root),
     assetManager(asstMgr)
 {
+
 }
 
 
@@ -72,58 +73,79 @@ void AssetPanel::DrawDirectory(const fs::path& path)
     if (columnCount < 1)
         columnCount = 1;
 
-    ImGui::Columns(columnCount, 0, false);
+    ImGui::Columns(columnCount, nullptr, false);
 
-    // Iterate over files/folders
     for (auto& entry : fs::directory_iterator(path))
     {
         fs::path file = entry.path();
         std::string name = file.filename().string();
 
-        // FOLDER
+        ImGui::PushID(name.c_str());
+
+        // ============================================================
+        //  FOLDER
+        // ============================================================
         if (entry.is_directory())
         {
             ImTextureID folderIcon = LoadThumbnail("../assets/icons/folder_icon.png");
 
-            ImGui::PushID(name.c_str());
-            ImGui::Image(folderIcon, { thumbnailSize, thumbnailSize });
+            // --- Selectable hitbox wrapping thumbnail + text ---
+            ImGui::BeginGroup();
 
-            if (ImGui::IsItemClicked())
+            ImGui::Image(folderIcon, { thumbnailSize, thumbnailSize });
+            bool clicked = ImGui::IsItemClicked();
+
+            ImGui::TextWrapped("%s", name.c_str());
+
+            ImGui::EndGroup();
+
+            if (clicked)
                 m_CurrentPath /= name;
 
-            
-
-
-            ImGui::Text("%s", name.c_str());
-            ImGui::PopID();
             ImGui::NextColumn();
+            ImGui::PopID();
             continue;
         }
 
-        // ONLY .meta FILES
+        // ============================================================
+        //  ONLY .meta files
+        // ============================================================
         if (file.extension() != ".meta")
+        {
+            ImGui::PopID();
             continue;
+        }
 
         std::string actualFile = file.replace_extension("").string();
         MetaFile meta = MetaFileSystem::Load(actualFile);
-
         if (meta.uuid.value() == 0)
+        {
+            ImGui::PopID();
             continue;
+        }
 
         std::string previewImage = actualFile + ".png";
-        ImTextureID thumb;
+        ImTextureID thumb = fs::exists(previewImage)
+            ? LoadThumbnail(previewImage)
+            : LoadThumbnail("../assets/icons/mesh_icon.png");
 
-        if (fs::exists(previewImage))
-            thumb = LoadThumbnail(previewImage);
-        else
-            thumb = LoadThumbnail("../assets/icons/mesh_icon.png");
-
-        ImGui::PushID(name.c_str());
+        // ============================================================
+        // SELECTABLE GROUP (fix: thumbnail is selectable)
+        // ============================================================
+        ImGui::BeginGroup();
         ImGui::Image(thumb, { thumbnailSize, thumbnailSize });
+        bool clicked = ImGui::IsItemClicked();  // thumbnail click
 
-        ImGui::Selectable(ExtractNameFromPath(name).c_str());
+        // Add a selectable for the name (but invisible)
+        // So clicking *ANYWHERE* selects it
+        ImGui::Selectable(ExtractNameFromPath(name).c_str(), false);
 
-        // DRAG DROP
+        if (clicked)
+            ImGui::SetItemDefaultFocus();
+
+        // ============================================================
+        // DRAG AND DROP
+        // ============================================================
         if (ImGui::BeginDragDropSource())
         {
             MeshDragPayload payload;
@@ -134,22 +156,26 @@ void AssetPanel::DrawDirectory(const fs::path& path)
 
             ImGui::SetDragDropPayload("MESH_ASSET", &payload, sizeof(payload));
             ImGui::Text("%s", ExtractNameFromPath(name).c_str());
-
             ImGui::EndDragDropSource();
         }
 
-        ImGui::PopID();
+        ImGui::EndGroup();
         ImGui::NextColumn();
+        ImGui::PopID();
     }
 
-    // IMPORT MESH
-    if (ImGui::BeginPopupContextWindow("DirContextMenu", ImGuiPopupFlags_MouseButtonRight))
+    // ============================================================
+    // RIGHT-CLICK CONTEXT MENU (Mesh folder only)
+    // ============================================================
+    if (ExtractNameFromPath(m_CurrentPath.string()) == "Mesh")
     {
-        if (ImGui::MenuItem("Import Mesh..."))
+        if (ImGui::BeginPopupContextWindow("DirContextMenu", ImGuiPopupFlags_MouseButtonRight))
         {
-            m_OpenImportDialog = true;
+            if (ImGui::MenuItem("Import Mesh..."))
+                m_OpenImportDialog = true;
+
+            ImGui::EndPopup();
         }
-        ImGui::EndPopup();
     }
 
     ImGui::Columns(1);
@@ -160,6 +186,7 @@ void AssetPanel::DrawDirectory(const fs::path& path)
         OpenImportDialog();
     }
 }
+
 
 
 void AssetPanel::CreateNewFolder(const fs::path& path)
@@ -206,4 +233,3 @@ ImTextureID AssetPanel::LoadThumbnail(const std::string& file)
 
     return id;
 }
-////////////////////////////////

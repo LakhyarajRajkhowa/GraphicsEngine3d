@@ -7,6 +7,8 @@
     "cameraPosX": 0,
     "cameraPosY": 0,
     "cameraPosZ": 0,
-    "cameraFov": 45
+    "cameraFov": 45,
+
+    "gameFolderPath": "C:/Users/llakh/OneDrive/Desktop/Projects/LengineGraphics3D/TestGameFolder"
 }
 

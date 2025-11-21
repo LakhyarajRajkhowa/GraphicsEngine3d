@@ -17,17 +17,21 @@ struct Vertex {
 namespace Lengine {
     class SubMesh {
     private:
+        std::string name;
         std::vector<Vertex> vertices;
         std::vector<unsigned int> indices;
         GLuint VAO, VBO, EBO;
 
+        
         glm::vec3 localCenter;
         float boundingRadius;
 
         void computeBounds();
 
+
     public:
-        SubMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
+        Material* material = nullptr;
+        SubMesh(const std::string& name, const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices);
         ~SubMesh();
 
         bool isSelected = false;
@@ -36,8 +40,8 @@ namespace Lengine {
         const glm::vec3& getLocalCenter() { return localCenter; }
         float& getBoundingRadius() { return boundingRadius; }
         void setupMesh();
-        
-
+        Material* getMaterial() { return material; }
+        const std::string& getName() { return name; }
     };
     class Mesh {
     public:

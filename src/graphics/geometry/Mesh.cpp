@@ -2,8 +2,8 @@
 #include <iostream>
 
 namespace Lengine {
-    SubMesh::SubMesh(const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
-        : vertices(vertices), indices(indices)
+    SubMesh::SubMesh(const std::string& nam, const std::vector<Vertex>& vertices, const std::vector<unsigned int>& indices)
+        :name(nam), vertices(vertices), indices(indices)
     {
         computeBounds();
         setupMesh();

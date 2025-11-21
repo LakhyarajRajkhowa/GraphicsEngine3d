@@ -37,6 +37,9 @@ namespace Lengine {
 
         char m_FolderNameBuffer[256] = "";
         bool m_ShowCreateFolderPopup = false;
+
+        bool isSelected = false;
+
     };
 
 }

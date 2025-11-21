@@ -2,6 +2,8 @@
 #include <SDL2/SDL.h>
 #include <chrono>
 
+
+
 struct FrameStats {
     float fps;
     float msPerFrame;
