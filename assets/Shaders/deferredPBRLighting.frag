@@ -13,7 +13,7 @@ uniform sampler2D gAlbedo;
 uniform sampler2D gMaterial;
 
 
-#define MAX_LIGHTS 32
+#define MAX_LIGHTS 64
 
 uniform vec3  lightPositions[MAX_LIGHTS];   // point / spot
 uniform vec3  lightDirections[MAX_LIGHTS];  // dir / spot (normalized)

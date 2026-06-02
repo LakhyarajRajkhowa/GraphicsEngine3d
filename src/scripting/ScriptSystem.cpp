@@ -40,16 +40,13 @@ namespace Lengine {
 
             for (const std::string& name : sc.scriptNames)
             {
-                ScriptableEntity* s = library.Instantiate(name);
+                ScriptableEntity* s = library.Instantiate(name, e, registry, input);
                 if (!s) continue;
 
                 ownedScripts[e].push_back(s);
                 sc.scripts.push_back(s);
 
-                s->entity = e;
-                s->registry = &registry;
-                s->input = &input;
-                s->OnCreate();
+                s->OnCreate();  // entity, registry, input already set by constructor
             }
         }
     }

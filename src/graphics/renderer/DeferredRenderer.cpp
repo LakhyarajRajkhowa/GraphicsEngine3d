@@ -124,112 +124,86 @@ void DeferredRenderer::bindPointShadowUniforms(
 void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
 {
     const Registry& registry = ctx.scene->GetRegistry();
-
     auto geomShader = assetManager.getShader(ShaderRegistry::GEOMETRY);
-    geomShader->use();
 
-    geomShader->setMat4("view", ctx.cameraView);
-    geomShader->setMat4("projection", ctx.cameraProjection);
-    geomShader->setVec3("cameraPos", ctx.cameraPos);
+    geometryQueue.Clear();
 
     const auto& mrDense = registry.meshRenderers.GetDense();
     const auto& mrEntities = registry.meshRenderers.GetEntities();
 
+    // Camera forward for depth calculation
+    glm::vec3 camForward = glm::normalize(
+        glm::vec3(glm::inverse(ctx.cameraView) * glm::vec4(0, 0, -1, 0))
+    );
+
     for (size_t i = 0; i < mrDense.size(); ++i)
     {
         const MeshRenderer& mr = mrDense[i];
-        const Entity entityID = mrEntities[i];
+        const Entity        entity = mrEntities[i];
 
-        if (!mr.render) continue;
-        if (mr.inst.baseMaterial.isNull()) continue;
-        if (!registry.HasComponent<TransformComponent>(entityID)) continue;
-        if (!registry.HasComponent<MeshFilter>(entityID)) continue;
+        if (!mr.render)                                          continue;
+        if (mr.inst.baseMaterial.isNull())                       continue;
+        if (!registry.HasComponent<TransformComponent>(entity))  continue;
+        if (!registry.HasComponent<MeshFilter>(entity))          continue;
 
-        const TransformComponent& t = registry.GetComponent<TransformComponent>(entityID);
-        const MeshFilter& mf = registry.GetComponent<MeshFilter>(entityID);
+        const TransformComponent& t = registry.GetComponent<TransformComponent>(entity);
+        const MeshFilter& mf = registry.GetComponent<MeshFilter>(entity);
 
         if (mf.HasPendingSubmesh()) continue;
 
-        geomShader->setMat4("model", t.worldMatrix);
-
-        Mesh* mesh = nullptr;
-        if (!mf.meshID.isNull())
-            mesh = assetManager.GetSubmesh(mf.meshID);
-
-        geomShader->setBool("useSkeleton", false);
-        if (registry.HasComponent<AnimationComponent>(mf.rootParent))
-        {
-
-            const AnimationComponent& anim = registry.GetComponent<AnimationComponent>(mf.rootParent);
-            
-
-            if (mesh
-                && anim.currentAnimationID != UUID::Null
-                && !anim.finalBoneMatrices.empty())
-            {
-
-                for (int b = 0; b < (int)mesh->bonePalette.size(); ++b)
-                {
-
-                    int globalID = mesh->bonePalette[b];
-                    geomShader->setMat4(
-                        "finalBonesMatrices[" + std::to_string(b) + "]",
-                        anim.finalBoneMatrices[globalID]
-                    );
-                }
-                geomShader->setBool("useSkeleton", true);
-            }
-     
-        }
-        
-       
+        Mesh* mesh = mf.meshID.isNull()
+            ? nullptr
+            : assetManager.GetSubmesh(mf.meshID);
+        if (!mesh) continue;
 
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
         if (!mat) continue;
 
-        const MaterialInstance& inst = mr.inst;
-        const ResolvedMaterial& finalMat = ResolveMaterial(*mat, inst);
+        // Build the item
+        RenderItem item;
+        item.mesh = mesh;
+        item.entity = entity;
+        item.modelMatrix = t.worldMatrix;
+        item.material = ResolveMaterial(*mat, mr.inst);
 
-        geomShader->setVec3("material.albedo", finalMat.albedo);
-        geomShader->setFloat("material.metallic", finalMat.metallic);
-        geomShader->setFloat("material.roughness", finalMat.roughness);
-        geomShader->setFloat("material.ao", finalMat.ao);
-        geomShader->setFloat("material.normalStrength", finalMat.normalStrength);
+        // Skeleton
+        if (registry.HasComponent<AnimationComponent>(mf.rootParent))
+        {
+            const AnimationComponent& anim =
+                registry.GetComponent<AnimationComponent>(mf.rootParent);
 
-        bindTexture(*geomShader, assetManager, finalMat.map_albedo,
-            inst.use_map_albedo, "material.hasAlbedoMap",
-            "material.albedoMap",
-            GL_TEXTURE0 + (unsigned)TextureUnit::Albedo);
+            if (anim.currentAnimationID != UUID::Null
+                && !anim.finalBoneMatrices.empty()
+                && !mesh->bonePalette.empty())
+            {
+                item.hasSkeleton = true;
+                item.boneMatrices = &anim.finalBoneMatrices;
+                item.bonePalette = &mesh->bonePalette;
+            }
+        }
 
-        bindTexture(*geomShader, assetManager, finalMat.map_normal,
-            inst.use_map_normal, "material.hasNormalMap",
-            "material.normalMap",
-            GL_TEXTURE0 + (unsigned)TextureUnit::Normal);
+        // Sort key — depth from camera (front = small value = drawn first)
+        glm::vec3 worldCenter = glm::vec3(t.worldMatrix * glm::vec4(mesh->localCenter, 1.0f));
+        float depth = glm::dot(camForward, worldCenter - ctx.cameraPos);
 
-        bindTexture(*geomShader, assetManager, finalMat.map_ao,
-            inst.use_map_ao, "material.hasAOMap",
-            "material.aoMap",
-            GL_TEXTURE0 + (unsigned)TextureUnit::AO);
+        item.sortKey = BuildDepthSortKey(depth, false);
 
-        bindTexture(*geomShader, assetManager, finalMat.map_metallic,
-            inst.use_map_metallic, "material.hasMetallicMap",
-            "material.metallicMap",
-            GL_TEXTURE0 + (unsigned)TextureUnit::Metallic);
-
-        bindTexture(*geomShader, assetManager, finalMat.map_roughness,
-            inst.use_map_roughness, "material.hasRoughnessMap",
-            "material.roughnessMap",
-            GL_TEXTURE0 + (unsigned)TextureUnit::Roughness);
-
-        bindTexture(*geomShader, assetManager, finalMat.map_metallicRoughness,
-            inst.use_map_metallicRoughness, "material.hasMetallicRoughnessMap",
-            "material.metallicRoughnessMap",
-            GL_TEXTURE0 + (unsigned)TextureUnit::MetallicRoughness);
-
-        if (mesh) mesh->draw();
+        geometryQueue.Submit(std::move(item));
     }
+     
+    geometryQueue.Sort();
 
-    geomShader->unuse();
+    geometryCommandBuffer.Clear();
+
+    GeometryQueueFlusher::Flush(
+        geometryQueue,
+        geomShader.get(),
+        ctx,
+        assetManager,
+        geometryCommandBuffer);
+
+    geometryCommandBuffer.Execute();
+
 }
 
 void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffer& gBuffer)

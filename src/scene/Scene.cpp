@@ -88,8 +88,6 @@ Entity Scene::addEntity(Entity entityId, const Entity originalEntityId)
     if (registry.meshFilters.Has(originalEntityId)) {
         const MeshFilter& oldMf = registry.meshFilters.Get(originalEntityId);
         registry.meshFilters.Add(entityId, MeshFilter(oldMf.meshID, entityId));
-
-        std::cout << " Scene.cpp :: root: " << GetRootParent(entityId) << std::endl;
     }
 
     if (registry.meshRenderers.Has(originalEntityId)) {
@@ -98,7 +96,8 @@ Entity Scene::addEntity(Entity entityId, const Entity originalEntityId)
     }
 
     if (registry.lights.Has(originalEntityId)) {
-        registry.lights.Add(entityId);
+        const Light& oldLight = registry.lights.Get(originalEntityId);
+        registry.lights.Add(entityId, Light(oldLight));
     }
 
     if (registry.nameTags.Has(originalEntityId))
@@ -108,14 +107,30 @@ Entity Scene::addEntity(Entity entityId, const Entity originalEntityId)
         registry.nameTags.Add(entityId, NameTagComponent(newName));
     }
 
-    if (registry.skeletons.Has(originalEntityId)) {
-        auto& sk = registry.skeletons.Get(originalEntityId);
-        registry.skeletons.Add(entityId, SkeletonComponent(sk.skeletonID));
+    //if (registry.skeletons.Has(originalEntityId)) {
+    //    auto& sk = registry.skeletons.Get(originalEntityId);
+    //    registry.skeletons.Add(entityId, SkeletonComponent(sk.skeletonID));
+    //}
+
+    //if (registry.animations.Has(originalEntityId)) {
+    //    AnimationComponent& anim = registry.animations.Get(originalEntityId);
+    //    registry.animations.Add(entityId, AnimationComponent(anim.animationIDs));
+    //}
+
+
+    if (registry.controllers.Has(originalEntityId)) {
+        ControllerComponent& oldcontroller = registry.controllers.Get(originalEntityId);
+        registry.controllers.Add(entityId, ControllerComponent(oldcontroller));
     }
 
-    if (registry.animations.Has(originalEntityId)) {
-        AnimationComponent& anim = registry.animations.Get(originalEntityId);
-        registry.animations.Add(entityId, AnimationComponent(anim.animationIDs));
+    if (registry.movements.Has(originalEntityId)) {
+        MovementComponent& oldMovement = registry.movements.Get(originalEntityId);
+        registry.movements.Add(entityId, MovementComponent(oldMovement));
+    }
+
+    if (registry.scripts.Has(originalEntityId)) {
+        ScriptComponent& oldScript = registry.scripts.Get(originalEntityId);
+        registry.scripts.Add(entityId, ScriptComponent(oldScript));
     }
 
     registry.GetEntities().push_back(entityId);

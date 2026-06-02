@@ -147,9 +147,7 @@ void RenderPipeline::BuildGraph()
         renderGraph.AddPass(
             std::make_unique<SkyboxPass>(
                 target,
-                hdrSkybox,
-                Paths::Textures + "Hdr/" + "autumn_field_puresky_4k.hdr",
-                512
+                hdrSkybox   
             )
         );
 
@@ -168,7 +166,7 @@ void RenderPipeline::BuildGraph()
     {
         // DEFERRED RENDERING
 
-        // Geometry pass
+        //// Geometry pass
         renderGraph.AddPass(
             std::make_unique<GeometryPass>(
                 deferredRenderer,
@@ -176,7 +174,7 @@ void RenderPipeline::BuildGraph()
             )
         );
 
-        // Lighting pass
+        //// Lighting pass
         renderGraph.AddPass(
             std::make_unique<DeferredLightingPass>(
                 deferredRenderer,
@@ -192,13 +190,11 @@ void RenderPipeline::BuildGraph()
             )
         );
 
-        // Skybox after lighting
+        //// Skybox after lighting
         renderGraph.AddPass(
             std::make_unique<SkyboxPass>(
                 *hdrFramebuffer,
-                hdrSkybox,
-                Paths::Textures + "Hdr/" + "autumn_field_puresky_4k.hdr",
-                512
+                hdrSkybox
             )
         );
     }

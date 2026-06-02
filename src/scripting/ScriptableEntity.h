@@ -14,6 +14,9 @@ namespace Lengine {
     class ScriptableEntity
     {
     public:
+        ScriptableEntity(Entity entity, Registry& registry, InputManager& input)
+            : entity(entity), registry(registry), input(input) {}
+
         virtual ~ScriptableEntity() = default;
 
         virtual void OnCreate() {}
@@ -22,9 +25,9 @@ namespace Lengine {
         virtual void OnCollisionEnter(Entity other) {}
         virtual void OnCollisionExit(Entity other) {}
 
-        Entity          entity      = NullEntity;
-        Registry*       registry    = nullptr;
-        InputManager*   input       = nullptr;
+        Entity          entity;
+        Registry& registry;
+        InputManager& input;
     };
 
 } // namespace Lengine
@@ -62,12 +65,15 @@ namespace Lengine {
 } // namespace Lengine::Internal
 
 
-#define REGISTER_SCRIPT(ClassName)                                                    \
-    extern "C" SCRIPT_API Lengine::ScriptableEntity* Create_##ClassName()             \
-    {                                                                                  \
-        return new ClassName();                                                        \
-    }                                                                                  \
-    static Lengine::Internal::ScriptRegistrar                                         \
+#define REGISTER_SCRIPT(ClassName)                                                        \
+    extern "C" SCRIPT_API Lengine::ScriptableEntity* Create_##ClassName(                  \
+        Lengine::Entity       entity,                                                     \
+        Lengine::Registry&    registry,                                                   \
+        Lengine::InputManager& input)                                                     \
+    {                                                                                     \
+        return new ClassName(entity, registry, input);                                    \
+    }                                                                                     \
+    static Lengine::Internal::ScriptRegistrar                                             \
         s_registrar_##ClassName(#ClassName, __FILE__);
 
 

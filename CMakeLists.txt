@@ -21,13 +21,9 @@ set(GL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/external/GL)
 set(GLM_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/external/glm)
 set(ASSIMP_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/external/assimp)
 set(SDL2_LIB_DIR ${CMAKE_CURRENT_SOURCE_DIR}/lib)
-
 set(PHYSX_ROOT ${CMAKE_CURRENT_SOURCE_DIR}/src/external/physx)
 
 
-# ────────────────────────────────────────────────
-# ImGui source files
-# ────────────────────────────────────────────────
 
 
 # ────────────────────────────────────────────────
@@ -119,7 +115,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # Link libraries
 # ────────────────────────────────────────────────
 
-set(PHYSX_LIB ${PHYSX_ROOT}/lib)
+set(PHYSX_LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib/physx/$<IF:$<CONFIG:Debug>,MTd,MT>)
 
 target_link_directories(${PROJECT_NAME} PUBLIC
     ${SDL2_LIB_DIR}

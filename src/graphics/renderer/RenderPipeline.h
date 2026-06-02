@@ -291,7 +291,7 @@ namespace Lengine {
     class SkyboxPass : public RenderPass
     {
     public:
-        SkyboxPass(Framebuffer& target_, HDREnvironment& hdrSykybox_, std::string texPath_, uint32_t texRes_) :
+        SkyboxPass(Framebuffer& target_, HDREnvironment& hdrSykybox_) :
             target(target_),
             hdrSkybox(hdrSykybox_)
         {

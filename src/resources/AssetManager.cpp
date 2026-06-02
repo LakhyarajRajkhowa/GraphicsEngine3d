@@ -1092,6 +1092,55 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jEntity["collider"] = jCol;
         }
 
+        // ---- Movement ----
+        if (registry.movements.Has(entityID))
+        {
+            const MovementComponent& m = registry.movements.Get(entityID);
+
+            json jMov;
+            jMov["moveInput"] = { m.moveInput.x, m.moveInput.y };
+            jMov["jumpRequested"] = m.jumpRequested;
+            jMov["sprinting"] = m.sprinting;
+            jMov["walkSpeed"] = m.walkSpeed;
+            jMov["sprintMultiplier"] = m.sprintMultiplier;
+            jMov["jumpForce"] = m.jumpForce;
+            jEntity["movement"] = jMov;
+        }
+
+        // ---- Controller ----
+        if (registry.controllers.Has(entityID))
+        {
+            const ControllerComponent& c = registry.controllers.Get(entityID);
+
+            json jCtrl;
+            jCtrl["active"] = c.active;
+            jCtrl["type"] = static_cast<int>(c.type);
+            jCtrl["moveX"] = c.moveX;
+            jCtrl["moveY"] = c.moveY;
+            jCtrl["lookX"] = c.lookX;
+            jCtrl["lookY"] = c.lookY;
+            jCtrl["sprintHeld"] = c.sprintHeld;
+            jCtrl["jumpPressed"] = c.jumpPressed;
+            jCtrl["attackPressed"] = c.attackPressed;
+            jCtrl["interactPressed"] = c.interactPressed;
+            jCtrl["pausePressed"] = c.pausePressed;
+            jEntity["controller"] = jCtrl;
+        }
+
+        // ---- Script ----
+        if (registry.scripts.Has(entityID))
+        {
+            const ScriptComponent& s = registry.scripts.Get(entityID);
+
+            json jScript;
+            json names = json::array();
+            for (const auto& name : s.scriptNames)
+                names.push_back(name);
+
+            jScript["scriptNames"] = names;
+            jEntity["script"] = jScript;
+        }
+
         jScene["entities"].push_back(jEntity);
     }
 
@@ -1382,6 +1431,63 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         }
                     }
                     registry.colliders.Add(entityID, c);
+                }
+
+                // ---- Movement ----
+                if (jEntity.contains("movement"))
+                {
+                    const auto& jm = jEntity.at("movement");
+
+                    MovementComponent m;
+
+                    if (jm.contains("moveInput"))
+                        m.moveInput = { jm.at("moveInput")[0], jm.at("moveInput")[1] };
+
+                    if (jm.contains("jumpRequested"))    m.jumpRequested = jm.at("jumpRequested");
+                    if (jm.contains("sprinting"))        m.sprinting = jm.at("sprinting");
+                    if (jm.contains("walkSpeed"))        m.walkSpeed = jm.at("walkSpeed");
+                    if (jm.contains("sprintMultiplier")) m.sprintMultiplier = jm.at("sprintMultiplier");
+                    if (jm.contains("jumpForce"))        m.jumpForce = jm.at("jumpForce");
+
+                    registry.movements.Add(entityID, m);
+                }
+
+                // ---- Controller ----
+                if (jEntity.contains("controller"))
+                {
+                    const auto& jc = jEntity.at("controller");
+
+                    ControllerComponent c;
+
+                    if (jc.contains("active"))          c.active = jc.at("active");
+                    if (jc.contains("type"))            c.type = static_cast<ControllerType>(jc.at("type").get<int>());
+                    if (jc.contains("moveX"))           c.moveX = jc.at("moveX");
+                    if (jc.contains("moveY"))           c.moveY = jc.at("moveY");
+                    if (jc.contains("lookX"))           c.lookX = jc.at("lookX");
+                    if (jc.contains("lookY"))           c.lookY = jc.at("lookY");
+                    if (jc.contains("sprintHeld"))      c.sprintHeld = jc.at("sprintHeld");
+                    if (jc.contains("jumpPressed"))     c.jumpPressed = jc.at("jumpPressed");
+                    if (jc.contains("attackPressed"))   c.attackPressed = jc.at("attackPressed");
+                    if (jc.contains("interactPressed")) c.interactPressed = jc.at("interactPressed");
+                    if (jc.contains("pausePressed"))    c.pausePressed = jc.at("pausePressed");
+
+                    registry.controllers.Add(entityID, c);
+                }
+
+                // ---- Script ----
+                if (jEntity.contains("script"))
+                {
+                    const auto& js = jEntity.at("script");
+
+                    ScriptComponent s;
+
+                    if (js.contains("scriptNames"))
+                    {
+                        for (const auto& name : js.at("scriptNames"))
+                            s.scriptNames.push_back(name.get<std::string>());
+                    }
+
+                    registry.scripts.Add(entityID, s);
                 }
             }
             catch (const json::exception& e) {

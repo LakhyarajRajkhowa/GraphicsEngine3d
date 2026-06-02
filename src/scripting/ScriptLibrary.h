@@ -18,7 +18,11 @@
 
 namespace Lengine {
 
-    using ScriptFactory = ScriptableEntity * (*)();
+    using ScriptFactory = Lengine::ScriptableEntity* (*)(
+        Lengine::Entity,
+        Lengine::Registry&,      
+        Lengine::InputManager&   
+        );
     using FnGetScriptRegistry = void(*)(const char***, const char***, int*);
 
     class ScriptLibrary
@@ -59,8 +63,7 @@ namespace Lengine {
 #endif
             m_LastWriteTime = std::filesystem::last_write_time(dllPath);
 
-            std::cout << "[ScriptLibrary] Loaded: " << dllPath
-                << "  (copy: " << loadPath << ")\n";
+      
             QueryRegistry();
             return true;
         }
@@ -124,7 +127,7 @@ namespace Lengine {
         }
 
 
-        ScriptableEntity* Instantiate(const std::string& className) const
+        ScriptableEntity* Instantiate(const std::string& className, Entity entity, Registry& registry, InputManager& input) const
         {
             if (!m_Handle) {
                 std::cerr << "[ScriptLibrary] Instantiate called but no dll loaded\n";
@@ -142,7 +145,7 @@ namespace Lengine {
                     << "  (did you add REGISTER_SCRIPT(" << className << ") ?)\n";
                 return nullptr;
             }
-            return fn();
+            return fn(entity, registry, input);  // ← forward args
         }
 
         const std::string& GetPath() const { return m_SourcePath; }
@@ -196,9 +199,6 @@ namespace Lengine {
             for (int i = 0; i < count; ++i)
                 m_Metadata.push_back({ names[i], files[i] });
 
-            std::cout << "[ScriptLibrary] " << count << " script(s) registered:\n";
-            for (auto& m : m_Metadata)
-                std::cout << "  " << m.name << "  <-  " << m.sourceFile << "\n";
         }
 
         LibHandle                        m_Handle = nullptr;
