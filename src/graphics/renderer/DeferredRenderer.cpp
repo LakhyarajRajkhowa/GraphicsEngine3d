@@ -126,7 +126,8 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
     const Registry& registry = ctx.scene->GetRegistry();
     auto geomShader = assetManager.getShader(ShaderRegistry::GEOMETRY);
 
-    geometryQueue.Clear();
+    opaqueQueue.Clear();
+    transparentQueue.Clear();
 
     const auto& mrDense = registry.meshRenderers.GetDense();
     const auto& mrEntities = registry.meshRenderers.GetEntities();
@@ -186,17 +187,25 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
         glm::vec3 worldCenter = glm::vec3(t.worldMatrix * glm::vec4(mesh->localCenter, 1.0f));
         float depth = glm::dot(camForward, worldCenter - ctx.cameraPos);
 
-        item.sortKey = BuildDepthSortKey(depth, false);
-
-        geometryQueue.Submit(std::move(item));
+        if (item.material.isTransparent)
+        {
+            item.sortKey = BuildDepthSortKey(depth, true);
+            transparentQueue.Submit(std::move(item));
+        }
+        else {
+            item.sortKey = BuildDepthSortKey(depth, false);
+            opaqueQueue.Submit(std::move(item));
+        }
+       
     }
      
-    geometryQueue.Sort();
+    opaqueQueue.Sort();
+    transparentQueue.Sort();
 
     geometryCommandBuffer.Clear();
 
     GeometryQueueFlusher::Flush(
-        geometryQueue,
+        opaqueQueue,
         geomShader.get(),
         ctx,
         assetManager,

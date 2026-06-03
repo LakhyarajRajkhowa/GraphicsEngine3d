@@ -51,8 +51,10 @@ namespace Lengine {
     inline uint64_t BuildDepthSortKey(float depthFromCamera, bool isTransparent = false)
     {
         uint32_t depthBits = static_cast<uint32_t>(depthFromCamera * 1000.0f);
-        if (isTransparent)
-            depthBits = ~depthBits; // flip for back-to-front
+        if (isTransparent) {
+                depthBits = ~depthBits; // flip for back-to-front
+
+        }
 
         return static_cast<uint64_t>(depthBits);
     }

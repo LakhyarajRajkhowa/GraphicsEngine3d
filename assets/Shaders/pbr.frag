@@ -67,6 +67,7 @@ struct PBRMaterial
     float metallic;
     float roughness;
     float ao;
+    float opacity;
 
     sampler2D albedoMap;
     bool hasAlbedoMap;
@@ -223,7 +224,7 @@ void main()
         albedoSample *= texture(material.albedoMap, TexCoords);
 
     vec3 albedo = albedoSample.rgb;
-    float alpha = albedoSample.a;
+    float alpha = albedoSample.a * material.opacity;
 
     if (material.hasMetallicRoughnessMap)
     {

@@ -1,16 +1,18 @@
 #pragma once
 
-#include "../scene/Scene.h"
-#include "../scene/SceneManager.h"
-#include "../graphics/opengl/GLSLProgram.h"
-#include "../graphics/camera/Camera3d.h"
-#include "../scene/components/Light.h"
-#include "../graphics/renderer/IRenderer.h"
-#include "../graphics/shadowMaps/shadowMap.h"
-#include "../graphics/shadowMaps/shadowCubeMap.h"
-#include "../resources/TextureCache.h"
+#include "scene/Scene.h"
+#include "scene/SceneManager.h"
+#include "graphics/opengl/GLSLProgram.h"
+#include "graphics/camera/Camera3d.h"
+#include "scene/components/Light.h"
+#include "graphics/shadowMaps/shadowMap.h"
+#include "graphics/shadowMaps/shadowCubeMap.h"
+#include "resources/TextureCache.h"
+#include "resources/AssetManager.h"
 
-#include "../resources/AssetManager.h"
+#include "IRenderer.h"
+#include "RenderQueue.h"
+#include "RenderCommand.h"
 
 namespace Lengine {
 
@@ -36,8 +38,13 @@ namespace Lengine {
         {
             
             if (IRenderer::enableDebugView) RenderScene_debug(ctx);
-            else RenderScene_pbr(ctx);
+            else RenderScene(ctx);
         }
+
+        void CollectAndSort(const RenderContext& ctx);
+        void FlushTransparentQueue(const RenderContext& ctx,
+            bool ueseExternalQueue = false,
+            const RenderQueue& externalQueue = RenderQueue{ 512 });
 
    
     private:
@@ -46,6 +53,10 @@ namespace Lengine {
         float nearPlane = 0.1f;
         float farPlane = 1000.5f;
 
+        RenderQueue   opaqueQueue{ 512 };
+        RenderQueue   transparentQueue{ 128 };
+        CommandBuffer forwardCommandBuffer{ 2048 };
+
         ResolvedMaterial resolvePBRMaterial(
             const Material& baseMaterial,
             const MaterialInstance& inst
@@ -53,10 +64,28 @@ namespace Lengine {
 
 
 
-        void RenderScene_pbr(
+        void RenderScene(
             const RenderContext& ctx
 
         );
+
+        void FlushOpaqueQueue(const RenderContext& ctx);
+
+        void lightingPass(
+            const RenderContext& ctx,
+            std::shared_ptr<GLSLProgram> shader
+        );
+
+        void brdfPass(
+            const RenderContext& ctx,
+            std::shared_ptr<GLSLProgram> shader
+        );
+
+        void shadowMapPass(
+            const RenderContext& ctx,
+            std::shared_ptr<GLSLProgram> shader
+        );
+
 
         void RenderScene_debug(
             const RenderContext& ctx

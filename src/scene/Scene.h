@@ -124,6 +124,8 @@ namespace Lengine {
         
         std::string GenerateDuplicateName(Scene* scene, const std::string& baseName);
 
+        const Entity GetNextEntityID() { return nextEntityID; }
+
     private:
         std::string name;
         UUID sceneID;

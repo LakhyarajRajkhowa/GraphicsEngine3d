@@ -31,7 +31,7 @@ namespace Lengine {
         renderSettings.resolution_Y = settings.resolution_Y;
      
         std::vector<std::string> scenesTobeLoaded;
-        scenesTobeLoaded.push_back("light_test");
+        scenesTobeLoaded.push_back("emptyScene");
 
         sceneManager.loadScenes(scenesTobeLoaded);
 

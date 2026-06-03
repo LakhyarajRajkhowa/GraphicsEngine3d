@@ -98,13 +98,37 @@ namespace Lengine {
             shader->setFloat("material.roughness", material.roughness);
             shader->setFloat("material.ao", material.ao);
             shader->setFloat("material.normalStrength", material.normalStrength);
+            shader->setFloat("material.opacity", material.opacity);
 
-            bindTex(material.map_albedo, true, "material.hasAlbedoMap", "material.albedoMap", GL_TEXTURE0 + (unsigned)TextureUnit::Albedo);
-            bindTex(material.map_normal, true, "material.hasNormalMap", "material.normalMap", GL_TEXTURE0 + (unsigned)TextureUnit::Normal);
-            bindTex(material.map_ao, true, "material.hasAOMap", "material.aoMap", GL_TEXTURE0 + (unsigned)TextureUnit::AO);
-            bindTex(material.map_metallic, true, "material.hasMetallicMap", "material.metallicMap", GL_TEXTURE0 + (unsigned)TextureUnit::Metallic);
-            bindTex(material.map_roughness, true, "material.hasRoughnessMap", "material.roughnessMap", GL_TEXTURE0 + (unsigned)TextureUnit::Roughness);
-            bindTex(material.map_metallicRoughness, true, "material.hasMetallicRoughnessMap", "material.metallicRoughnessMap", GL_TEXTURE0 + (unsigned)TextureUnit::MetallicRoughness);
+            bindTex(material.map_albedo,
+                material.map_albedo != UUID::Null,   
+                "material.hasAlbedoMap", "material.albedoMap",
+                GL_TEXTURE0 + (unsigned)TextureUnit::Albedo);
+
+            bindTex(material.map_normal,
+                material.map_normal != UUID::Null,
+                "material.hasNormalMap", "material.normalMap",
+                GL_TEXTURE0 + (unsigned)TextureUnit::Normal);
+
+            bindTex(material.map_ao,
+                material.map_ao != UUID::Null,
+                "material.hasAOMap", "material.aoMap",
+                GL_TEXTURE0 + (unsigned)TextureUnit::AO);
+
+            bindTex(material.map_metallic,
+                material.map_metallic != UUID::Null,
+                "material.hasMetallicMap", "material.metallicMap",
+                GL_TEXTURE0 + (unsigned)TextureUnit::Metallic);
+
+            bindTex(material.map_roughness,
+                material.map_roughness != UUID::Null,
+                "material.hasRoughnessMap", "material.roughnessMap",
+                GL_TEXTURE0 + (unsigned)TextureUnit::Roughness);
+
+            bindTex(material.map_metallicRoughness,
+                material.map_metallicRoughness != UUID::Null,
+                "material.hasMetallicRoughnessMap", "material.metallicRoughnessMap",
+                GL_TEXTURE0 + (unsigned)TextureUnit::MetallicRoughness);
         }
 
     private:
@@ -176,6 +200,21 @@ namespace Lengine {
 
         void Execute() override {
             if (mesh) mesh->draw();
+        }
+    };
+
+    struct EnableBlendCommand : IRenderCommand {
+        void Execute() override {
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            glDepthFunc(GL_LEQUAL); 
+        }
+    };
+
+    struct DisableBlendCommand : IRenderCommand {
+        void Execute() override {
+            glDisable(GL_BLEND);
+            glDepthFunc(GL_LESS);   
         }
     };
 

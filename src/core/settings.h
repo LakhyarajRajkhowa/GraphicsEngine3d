@@ -29,7 +29,7 @@ enum class RenderPath {
 };
 
 struct RenderSettings {
-	 RenderPath renderPath = RenderPath::Deferred;
+	 RenderPath renderPath = RenderPath::Forward;
 
 	float exposure = 1.0f;
 

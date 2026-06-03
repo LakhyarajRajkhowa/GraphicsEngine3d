@@ -314,7 +314,7 @@ std::unique_ptr<Scene> Scene::Clone()
     auto newScene = std::make_unique<Scene>(name + "_runtime", UUID());
 
     std::unordered_map<Entity, Entity> entityMap;
-
+    
     for (const Entity& e : registry.GetEntities())
     {
         entityMap[e] = e;
@@ -416,6 +416,8 @@ std::unique_ptr<Scene> Scene::Clone()
             shape.dirty = true;
         }
     }
+
+    newScene->nextEntityID = nextEntityID;
 
     return newScene;
 }

@@ -85,6 +85,29 @@ namespace Lengine {
         Framebuffer& target;
     };
 
+    class ForwardTransparencyPass : public RenderPass
+    {
+    public:
+        ForwardTransparencyPass(
+            ForwardRenderer& renderer,
+            RenderQueue& transparentQueue,
+            Framebuffer& target)
+            : renderer(renderer), target(target), transparentQueue(transparentQueue)
+        {}
+
+        void Execute(RenderContext& ctx) override
+        {
+            target.Bind();       
+            renderer.FlushTransparentQueue(ctx, true, transparentQueue); 
+            target.Unbind();
+        }
+
+    private:
+        ForwardRenderer& renderer;
+        Framebuffer& target;
+        RenderQueue& transparentQueue;
+    };
+
     class GeometryPass : public RenderPass
     {
     public:

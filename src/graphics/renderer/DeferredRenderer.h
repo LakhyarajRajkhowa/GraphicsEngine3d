@@ -1,31 +1,18 @@
 #pragma once
 
-// ============================================================================
-// DeferredRenderer.h  —  updated to use RenderQueue + CommandBuffer
-// ============================================================================
-// Changes from original:
-//   - RenderGeometry() no longer issues OpenGL calls directly.
-//     It now populates a RenderQueue and calls GeometryQueueFlusher::Flush()
-//     to convert the sorted queue into a CommandBuffer, then executes it.
-//   - All private bind* helpers remain unchanged — they're now used by the
-//     BindPBRMaterialCommand internally, so you can keep them or remove them.
-//   - RenderLighting() is untouched — it's a single fullscreen quad pass,
-//     so a queue adds no value there.
-// ============================================================================
 
-#include "../scene/Scene.h"
-#include "../scene/SceneManager.h"
-#include "../graphics/opengl/GLSLProgram.h"
-#include "../graphics/camera/Camera3d.h"
-#include "../scene/components/Light.h"
-#include "../graphics/renderer/IRenderer.h"
-#include "../graphics/shadowMaps/shadowMap.h"
-#include "../graphics/shadowMaps/shadowCubeMap.h"
-#include "../resources/AssetManager.h"
+#include "scene/Scene.h"
+#include "scene/SceneManager.h"
+#include "graphics/opengl/GLSLProgram.h"
+#include "graphics/camera/Camera3d.h"
+#include "scene/components/Light.h"
+#include "graphics/renderer/IRenderer.h"
+#include "graphics/shadowMaps/shadowMap.h"
+#include "graphics/shadowMaps/shadowCubeMap.h"
+#include "resources/AssetManager.h"
 #include "graphics/Framebuffers/Framebuffer.h"
 #include "graphics/geometry/FullScreenQuad.h"
 
-// NEW
 #include "RenderQueue.h"
 #include "RenderCommand.h"
 
@@ -39,9 +26,10 @@ namespace Lengine {
             fullscreenQuad.Init();
         }
 
-        
         void RenderGeometry(const RenderContext& ctx);
         void RenderLighting(const RenderContext& ctx, const Framebuffer& gBuffer);
+
+        RenderQueue& GetTransparentQueue() { return transparentQueue; }
 
     private:
         AssetManager& assetManager;
@@ -51,7 +39,8 @@ namespace Lengine {
         float farPlane = 1000.5f;
 
 
-        RenderQueue   geometryQueue{ 512 };
+        RenderQueue   opaqueQueue{ 512 };
+        RenderQueue   transparentQueue{ 512 };
         CommandBuffer geometryCommandBuffer{ 2048 };
 
         void bindShadowMapUniforms(GLSLProgram& shader, ShadowMap& shadowMap,

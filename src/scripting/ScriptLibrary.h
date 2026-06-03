@@ -20,7 +20,7 @@ namespace Lengine {
 
     using ScriptFactory = Lengine::ScriptableEntity* (*)(
         Lengine::Entity,
-        Lengine::Registry&,      
+        Lengine::Scene&,      
         Lengine::InputManager&   
         );
     using FnGetScriptRegistry = void(*)(const char***, const char***, int*);
@@ -127,7 +127,7 @@ namespace Lengine {
         }
 
 
-        ScriptableEntity* Instantiate(const std::string& className, Entity entity, Registry& registry, InputManager& input) const
+        ScriptableEntity* Instantiate(const std::string& className, Entity entity, Scene& scene, InputManager& input) const
         {
             if (!m_Handle) {
                 std::cerr << "[ScriptLibrary] Instantiate called but no dll loaded\n";
@@ -145,7 +145,7 @@ namespace Lengine {
                     << "  (did you add REGISTER_SCRIPT(" << className << ") ?)\n";
                 return nullptr;
             }
-            return fn(entity, registry, input);  // ← forward args
+            return fn(entity, scene, input);  // ← forward args
         }
 
         const std::string& GetPath() const { return m_SourcePath; }

@@ -11,9 +11,7 @@ void RenderPipeline::Init() {
     glCullFace(GL_BACK);
     glFrontFace(GL_CCW);
 
-    // Blending
-    glEnable(GL_BLEND);
-    glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
 
     // MSAA
     glEnable(GL_MULTISAMPLE);
@@ -186,6 +184,14 @@ void RenderPipeline::BuildGraph()
         renderGraph.AddPass(
             std::make_unique<DepthCopyPass>(
                 *gBuffer,
+                *hdrFramebuffer
+            )
+        );
+
+        renderGraph.AddPass(
+            std::make_unique<ForwardTransparencyPass>(
+                forwardRenderer,
+                deferredRenderer.GetTransparentQueue(),
                 *hdrFramebuffer
             )
         );

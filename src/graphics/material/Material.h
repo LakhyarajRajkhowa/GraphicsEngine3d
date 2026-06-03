@@ -53,10 +53,17 @@ namespace Lengine {
         Material() = default;
 
         UUID id = UUID::Null;
-        glm::vec3 albedo = glm::vec3(1.0f);
+        std::string name;
+        bool localDirty = false;
+        bool isTransparent = false;
+
+        float opacity = 1.0f;
         float metallic = 0.0f;
         float roughness = 0.5f;
         float ao = 1.0f;
+        float normalStrength = 1.0f;
+
+        glm::vec3 albedo = glm::vec3(1.0f);
 
         std::string map_albedo_path;
         std::string map_normal_path;
@@ -72,10 +79,6 @@ namespace Lengine {
         UUID map_ao = UUID::Null;
         UUID map_metallicRoughness = UUID::Null;
 
-
-        float normalStrength = 1.0f;
-
-        std::string name;
         GLSLProgram* shader = nullptr;
 
         Material(std::string matName, GLSLProgram* shaderProgram)
@@ -85,15 +88,17 @@ namespace Lengine {
         GLSLProgram* getShader() const { return shader; }
         const std::string& getName() const { return  name; }
 
-        bool localDirty = false;
     };
 
     struct ResolvedMaterial {
+
 
         glm::vec3 albedo;
         float metallic;
         float roughness;
         float ao;
+        float opacity;
+        bool isTransparent;
 
         UUID map_albedo = UUID::Null;
         UUID map_normal = UUID::Null;
@@ -114,6 +119,7 @@ namespace Lengine {
         std::optional<float> metallic;
         std::optional<float> roughness;
         std::optional<float> ao;
+        std::optional<float> opacity;
 
         std::optional<UUID> map_albedo;
         std::optional<UUID> map_normal;
@@ -180,6 +186,9 @@ namespace Lengine {
 
         out.normalStrength =
             inst.normalStrength.value_or(base.normalStrength);
+
+        out.opacity = inst.opacity.value_or(base.opacity);   
+        out.isTransparent = base.isTransparent;
 
         return out;
     }

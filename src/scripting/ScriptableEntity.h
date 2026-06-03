@@ -8,14 +8,14 @@
 
 namespace Lengine {
 
-    class Registry;
+    class Scene;
     class InputManager;
 
     class ScriptableEntity
     {
     public:
-        ScriptableEntity(Entity entity, Registry& registry, InputManager& input)
-            : entity(entity), registry(registry), input(input) {}
+        ScriptableEntity(Entity entity, Scene& scene, InputManager& input)
+            : entity(entity), scene(scene), input(input) {}
 
         virtual ~ScriptableEntity() = default;
 
@@ -26,7 +26,7 @@ namespace Lengine {
         virtual void OnCollisionExit(Entity other) {}
 
         Entity          entity;
-        Registry& registry;
+        Scene&          scene;
         InputManager& input;
     };
 
@@ -67,11 +67,11 @@ namespace Lengine {
 
 #define REGISTER_SCRIPT(ClassName)                                                        \
     extern "C" SCRIPT_API Lengine::ScriptableEntity* Create_##ClassName(                  \
-        Lengine::Entity       entity,                                                     \
-        Lengine::Registry&    registry,                                                   \
-        Lengine::InputManager& input)                                                     \
+        Lengine::Entity         entity,                                                     \
+        Lengine::Scene&         scene,                                                   \
+        Lengine::InputManager&  input)                                                     \
     {                                                                                     \
-        return new ClassName(entity, registry, input);                                    \
+        return new ClassName(entity, scene, input);                                    \
     }                                                                                     \
     static Lengine::Internal::ScriptRegistrar                                             \
         s_registrar_##ClassName(#ClassName, __FILE__);
