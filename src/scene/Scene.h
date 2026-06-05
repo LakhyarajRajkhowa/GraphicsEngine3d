@@ -1,5 +1,7 @@
 #pragma once
 
+#include <queue>
+
 #include "resources/TextureCache.h"
 
 #include "scene/Entity.h"
@@ -8,6 +10,10 @@
 #include "assets/MaterialRegistry.h"
 
 #include "transform/TransformSystem.h"
+
+#include "utils/miscellaneous.h"
+
+
 namespace Lengine {
     class Scene {
     public:
@@ -17,22 +23,16 @@ namespace Lengine {
         {
         }
   
-         Entity createEntity_root(
-            const std::string& name
-        );
+        Entity CreateEntity(const std::string& name = GenerateRandomString(16));
+        Entity CreateEntity_root(const std::string& name);
+        Entity CopyEntity(const Entity originalEntityId, Entity entityId = NullEntity);
+        Entity DuplicateHierarchy(Entity rootID);
 
-         Entity createEntity(
-            const std::string& name
-        );
-
+        void DestroyEntity(Entity entity);
+        
          Entity GetRootParent(const Entity& entityID);
-         Entity DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot);
-         Entity DuplicateHierarchy(Entity rootID);
 
-        Entity addEntity(Entity entity, const Entity originalEntityId);
        
-
-
         const std::vector<Entity>& getEntities() const { return registry.GetEntities(); }
         std::vector<Entity>& getEntities() {
             return registry.GetEntities();
@@ -61,8 +61,6 @@ namespace Lengine {
 
         void SetParent(Entity child, Entity parent);
         void MakeOrphan(Entity child);
-        void RemoveEntity(const Entity);
-        void RemoveEntityRecursive(Entity id);
 
         std::unique_ptr<Scene> Clone();
        
@@ -126,18 +124,78 @@ namespace Lengine {
 
         const Entity GetNextEntityID() { return nextEntityID; }
 
+        void Update();
+
+
+
+        // Do not use this inside runtime Entity loops
+        Entity Scene::createEntity_root(const std::string& name)
+        {
+            Entity id = nextEntityID++;
+
+            registry.createEntity();
+            registry.nameTags.Add(id, NameTagComponent(name));
+
+            rootEntities.push_back(id);
+
+            return id;
+        }
+
+        // Scene.cpp
+        Entity Scene::CreateEntityImmediate(std::string name = GenerateRandomString(16))
+        {
+            Entity id = nextEntityID++;
+
+            // Register in the entity list and root list directly
+            registry.GetEntities().push_back(id);
+            rootEntities.push_back(id);
+
+            if (!name.empty())
+                registry.nameTags.Add(id, NameTagComponent(name));
+
+            // Sync registry's counter so it never collides
+            registry.SyncNextEntityID(nextEntityID);
+
+            return id;
+        }
+
+
     private:
         std::string name;
         UUID sceneID;
         std::vector<Entity> rootEntities;
 
         Entity nextEntityID = 1;
-
         Entity primaryCamera = NullEntity;
         Entity directionalShadowCaster = NullEntity;
         Entity pointShadowCaster = NullEntity;
         
         Registry registry;
+
+        std::queue<std::pair<Entity, std::string>> entityCreateQueue;
+        std::queue<std::pair<Entity, std::string>> rootEntityCreateQueue;
+        std::queue<std::pair<Entity, Entity>> copyEntityQueue;
+        std::queue<Entity> duplicateHierarchyQueue;
+        std::queue<Entity> destroyEntityQueue;
+
+        Entity copyEntity(const Entity originalEntityId, Entity entityId);
+
+        Entity duplicateHierarchyImmediate(
+            Entity originalID,
+            Entity newParent = NullEntity,
+            Entity newRoot = NullEntity
+        );
+
+        Entity copyEntityImmediate(
+            Entity entityID,
+            Entity originalEntityID
+        );
+
+        void removeEntityImmediate(const Entity);
+        void removeEntityRecursiveImmediate(Entity id);
+        void removeEntityRecursive(Entity id);
+
+
 
     };
 }

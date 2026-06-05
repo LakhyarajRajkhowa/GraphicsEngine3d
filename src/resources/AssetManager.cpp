@@ -896,7 +896,6 @@ std::unique_ptr<Scene> AssetManager::createScene(const std::string& name, const 
 
     return scene;
 }
-
 void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 {
     namespace fs = std::filesystem;
@@ -919,7 +918,11 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
     for (const auto& entityPtr : entities)
     {
         const Entity entityID = entityPtr;
-        const std::string entityName = registry.nameTags.Get(entityID).name;
+
+        std::string entityName = "Unknown";
+        if (registry.nameTags.Has(entityID)) {
+           entityName = registry.nameTags.Get(entityID).name;
+        }
 
         json jEntity;
         jEntity["entityID"] = entityID;
@@ -1092,6 +1095,23 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jEntity["collider"] = jCol;
         }
 
+        // ---- Rigidbody ----
+        if (registry.rigidBodies.Has(entityID))
+        {
+            const RigidbodyComponent& rb = registry.rigidBodies.Get(entityID);
+
+            json jRb;
+            jRb["mass"] = rb.mass;
+            jRb["useGravity"] = rb.useGravity;
+            jRb["isKinematic"] = rb.isKinematic;
+            jRb["linearDamping"] = rb.linearDamping;
+            jEntity["rigidbody"] = jRb;
+
+            // velocity / acceleration / forces are runtime-only state —
+            // they are intentionally not saved since they should always
+            // start at zero when a scene is loaded fresh.
+        }
+
         // ---- Movement ----
         if (registry.movements.Has(entityID))
         {
@@ -1193,47 +1213,44 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
         const auto& jEntities = jScene.at("entities");
 
+        std::unordered_map<Entity, Entity> idMap;
+
         for (const auto& jEntity : jEntities)
         {
             try {
-                std::string entityName = jEntity.at("name").get<std::string>();
-                Entity entity = scene->createEntity(entityName);
+                uint64_t oldID = jEntity.at("entityID").get<uint64_t>();
+                std::string name = jEntity.at("name").get<std::string>();
+                Entity newID = scene->CreateEntityImmediate(name);
+                idMap[Entity(oldID)] = newID;
+            }
+            catch (const json::exception& e) {
+                std::cerr << "Skipping entity (ID pass): " << e.what() << "\n";
+            }
+        }
 
-                const Entity entityID = entity;
+        for (const auto& jEntity : jEntities)
+        {
+            try {
+                uint64_t oldIDRaw = jEntity.at("entityID").get<uint64_t>();
+                Entity oldID = Entity(oldIDRaw);
+
+                auto it = idMap.find(oldID);
+                if (it == idMap.end()) continue;
+
+                const Entity entityID = it->second;
                 Registry& registry = scene->GetRegistry();
 
-                registry.nameTags.Add(entityID, NameTagComponent(entityName));
-
-                // ---- Transform ----
                 if (jEntity.contains("transform"))
                 {
                     const auto& jt = jEntity.at("transform");
 
-                    TransformComponent tr;
-
-                    tr.localPosition = {
-                        jt.at("position")[0],
-                        jt.at("position")[1],
-                        jt.at("position")[2]
-                    };
-
-                    tr.localRotation = glm::quat(
-                        jt.at("rotation")[3],
-                        jt.at("rotation")[0],
-                        jt.at("rotation")[1],
-                        jt.at("rotation")[2]
-                    );
-
-                    tr.localScale = {
-                        jt.at("scale")[0],
-                        jt.at("scale")[1],
-                        jt.at("scale")[2]
-                    };
-
-                    registry.transforms.Add(entityID, tr);
+                    registry.transforms.Add(entityID, TransformComponent(
+                        glm::vec3(jt.at("position")[0], jt.at("position")[1], jt.at("position")[2]),
+                        glm::quat(jt.at("rotation")[3], jt.at("rotation")[0], jt.at("rotation")[1], jt.at("rotation")[2]),
+                        glm::vec3(jt.at("scale")[0], jt.at("scale")[1], jt.at("scale")[2])
+                    ));
                 }
 
-                // ---- MeshFilter ----
                 if (jEntity.contains("meshFilter"))
                 {
                     MeshFilter mf;
@@ -1241,7 +1258,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.meshFilters.Add(entityID, mf);
                 }
 
-                // ---- MeshRenderer ----
                 if (jEntity.contains("meshRenderer"))
                 {
                     MeshRenderer mr;
@@ -1249,7 +1265,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.meshRenderers.Add(entityID, mr);
                 }
 
-                // ---- Light ----
                 if (jEntity.contains("light"))
                 {
                     const auto& jl = jEntity.at("light");
@@ -1276,7 +1291,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.lights.Add(entityID, light);
                 }
 
-                // ---- Camera ----
                 if (jEntity.contains("camera"))
                 {
                     const auto& jc = jEntity.at("camera");
@@ -1299,7 +1313,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.cameras.Add(entityID, c);
                 }
 
-                // ---- Skeleton ----
                 if (jEntity.contains("skeleton"))
                 {
                     const auto& js = jEntity.at("skeleton");
@@ -1311,18 +1324,14 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
                     auto LoadMat4Array = [](const json& arr) {
                         std::vector<glm::mat4> mats;
-
                         for (const auto& matJson : arr) {
                             glm::mat4 m(1.0f);
-
                             int index = 0;
                             for (int i = 0; i < 4; i++)
                                 for (int j = 0; j < 4; j++)
                                     m[i][j] = matJson[index++];
-
                             mats.push_back(m);
                         }
-
                         return mats;
                         };
 
@@ -1335,7 +1344,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.skeletons.Add(entityID, s);
                 }
 
-                // ---- Animation ----
                 if (jEntity.contains("animation"))
                 {
                     const auto& ja = jEntity.at("animation");
@@ -1357,18 +1365,14 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
                     auto LoadMat4Array = [](const json& arr) {
                         std::vector<glm::mat4> mats;
-
                         for (const auto& matJson : arr) {
                             glm::mat4 m(1.0f);
-
                             int index = 0;
                             for (int i = 0; i < 4; i++)
                                 for (int j = 0; j < 4; j++)
                                     m[i][j] = matJson[index++];
-
                             mats.push_back(m);
                         }
-
                         return mats;
                         };
 
@@ -1378,7 +1382,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.animations.Add(entityID, a);
                 }
 
-                // ---- Collider ----
                 if (jEntity.contains("collider"))
                 {
                     const auto& jc = jEntity.at("collider");
@@ -1418,7 +1421,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                             case ColliderShape::Type::Capsule:
                                 if (jShape.contains("radius"))
                                     s.radius = jShape.at("radius");
-
                                 if (jShape.contains("height"))
                                     s.height = jShape.at("height");
                                 break;
@@ -1433,7 +1435,20 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.colliders.Add(entityID, c);
                 }
 
-                // ---- Movement ----
+                if (jEntity.contains("rigidbody"))
+                {
+                    const auto& jr = jEntity.at("rigidbody");
+
+                    RigidbodyComponent rb;
+
+                    if (jr.contains("mass"))          rb.mass = jr.at("mass");
+                    if (jr.contains("useGravity"))    rb.useGravity = jr.at("useGravity");
+                    if (jr.contains("isKinematic"))   rb.isKinematic = jr.at("isKinematic");
+                    if (jr.contains("linearDamping")) rb.linearDamping = jr.at("linearDamping");
+
+                    registry.rigidBodies.Add(entityID, rb);
+                }
+
                 if (jEntity.contains("movement"))
                 {
                     const auto& jm = jEntity.at("movement");
@@ -1452,7 +1467,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.movements.Add(entityID, m);
                 }
 
-                // ---- Controller ----
                 if (jEntity.contains("controller"))
                 {
                     const auto& jc = jEntity.at("controller");
@@ -1474,7 +1488,6 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.controllers.Add(entityID, c);
                 }
 
-                // ---- Script ----
                 if (jEntity.contains("script"))
                 {
                     const auto& js = jEntity.at("script");
@@ -1501,30 +1514,63 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
             }
         }
 
-        for (const auto& jEntity : jScene["entities"])
+        for (const auto& jEntity : jEntities)
         {
-            Entity id = Entity(jEntity["entityID"]);
-            Entity parent = NullEntity;
+            if (!jEntity.contains("entityID")) continue;
+
+            Entity oldID = Entity(jEntity["entityID"].get<uint64_t>());
+
+            auto it = idMap.find(oldID);
+            if (it == idMap.end()) continue;
+
+            Entity newID = it->second;
+
+            if (!jEntity.contains("hierarchy")) continue;
+
+            const auto& jh = jEntity["hierarchy"];
+
+            if (!jh.contains("parent")) continue;
+
+            Entity oldParent = Entity(jh["parent"].get<uint64_t>());
+            if (oldParent == NullEntity) continue;
+
+            auto parentIt = idMap.find(oldParent);
+            if (parentIt == idMap.end()) continue;
+
+            scene->SetParent(newID, parentIt->second);
+        }
+
+        for (const auto& jEntity : jEntities)
+        {
+            if (!jEntity.contains("entityID")) continue;
+
+            Entity oldID = Entity(jEntity["entityID"].get<uint64_t>());
+
+            auto it = idMap.find(oldID);
+            if (it == idMap.end()) continue;
+
+            Entity newID = it->second;
+
+            bool hasParent = false;
 
             if (jEntity.contains("hierarchy"))
             {
                 const auto& jh = jEntity["hierarchy"];
-
                 if (jh.contains("parent"))
-                    parent = Entity(jh["parent"]);
+                {
+                    Entity oldParent = Entity(jh["parent"].get<uint64_t>());
+                    if (oldParent != NullEntity && idMap.count(oldParent))
+                        hasParent = true;
+                }
             }
 
-            if (parent != NullEntity)
-            {
-                scene->SetParent(id, parent);
-            }
-            else
+            if (!hasParent)
             {
                 if (std::find(scene->GetRootEntities().begin(),
                     scene->GetRootEntities().end(),
-                    id) == scene->GetRootEntities().end())
+                    newID) == scene->GetRootEntities().end())
                 {
-                    scene->GetRootEntities().push_back(id);
+                    scene->GetRootEntities().push_back(newID);
                 }
             }
         }

@@ -1,4 +1,3 @@
-// PhysXManager.cpp
 #include "PhysicsSystem.h"
 #include <iostream>
 
@@ -7,470 +6,735 @@ using namespace Lengine;
 bool PhysicsSystem::dirty = true;
 
 
-void PhysicsSystem::Init() {
-    static PxDefaultAllocator gAllocator;
+// =============================================================================
+//  Lifecycle
+// =============================================================================
+
+void PhysicsSystem::Init(Scene& scene)
+{
+    static PxDefaultAllocator     gAllocator;
     static PxDefaultErrorCallback gErrorCallback;
 
-   
     foundation = PxCreateFoundation(PX_PHYSICS_VERSION, gAllocator, gErrorCallback);
+    if (!foundation) { std::cout << "[Physics] Foundation creation failed\n"; return; }
 
-    if (!foundation)
-    {
-        std::cout << "PhysX foundation creation failed\n";
-        return;
-    }
+    pvd = PxCreatePvd(*foundation);
+    PxPvdTransport* transport = PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
+    pvd->connect(*transport, PxPvdInstrumentationFlag::eALL);
 
-    gPvd = PxCreatePvd(*foundation);
-
-    PxPvdTransport* transport =
-        PxDefaultPvdSocketTransportCreate("127.0.0.1", 5425, 10);
-
-    gPvd->connect(*transport, PxPvdInstrumentationFlag::eALL);
-
-    physics = PxCreatePhysics(
-        PX_PHYSICS_VERSION,
-        *foundation,
-        PxTolerancesScale(),
-        true,
-        gPvd
-    );
-
-    if (!physics)
-    {
-        std::cout << "PhysX creation failed\n";
-        return;
-    }
+    physics = PxCreatePhysics(PX_PHYSICS_VERSION, *foundation, PxTolerancesScale(), true, pvd);
+    if (!physics) { std::cout << "[Physics] PxPhysics creation failed\n"; return; }
 
     material = physics->createMaterial(0.5f, 0.5f, 0.6f);
 
     PxSceneDesc sceneDesc(physics->getTolerancesScale());
-    sceneDesc.gravity = PxVec3(0, -9.81f, 0);
+    sceneDesc.gravity = PxVec3(0.f, -9.81f, 0.f);
     dispatcher = PxDefaultCpuDispatcherCreate(2);
     sceneDesc.cpuDispatcher = dispatcher;
     sceneDesc.filterShader = PxDefaultSimulationFilterShader;
 
-    scene = physics->createScene(sceneDesc);
+    physxScene = physics->createScene(sceneDesc);
 
-    CreateGroundPlane();
-
-
+    createGroundPlane();
+    InitForScene(scene);
 }
-void PhysicsSystem::InitForRuntime(Scene& scene)
+
+void PhysicsSystem::InitForScene(Scene& scene)
 {
-    // Clear all editor actors from PhysX scene and the map
-    for (auto& [entity, actor] : actors)
-        if (actor->actor)
-            this->scene->removeActor(*actor->actor);
-    actors.clear();
+    ClearScene();
 
-    Registry& reg = scene.GetRegistry();
-    auto& colEntities = reg.colliders.GetEntities();
-    auto& colDense = reg.colliders.GetDense();
+    registry = &scene.GetRegistry();
 
+    auto& colEntities = registry->colliders.GetEntities();
+    auto& colDense = registry->colliders.GetDense();
     for (size_t i = 0; i < colDense.size(); ++i)
-    {
-        Entity entity = colEntities[i];
-        ColliderComponent& col = colDense[i];  // mutable ref — we'll fill runtimeShape
+        buildColliderActor(colEntities[i], colDense[i]);
 
-        for (auto& shape : col.shapes)
-            AddCollider(entity, col, shape.type); // creates PxActor + PxShape fresh
-    }
-
-    auto& rbEntities = reg.rigidBodies.GetEntities();
-    auto& rbDense = reg.rigidBodies.GetDense();
-
+    auto& rbEntities = registry->rigidBodies.GetEntities();
+    auto& rbDense = registry->rigidBodies.GetDense();
     for (size_t i = 0; i < rbDense.size(); ++i)
-    {
-        Entity entity = rbEntities[i];
-        RigidbodyComponent& rb = const_cast<RigidbodyComponent&>(rbDense[i]);
-        AddRigidbody(entity, rb);
-    }
+        buildRigidbodyActor(rbEntities[i], rbDense[i]);
 
-    // Sync initial positions from scene transforms into PhysX
-    SyncTransformsToPhysX(reg.transforms);
-}
+    SyncTransformsToPhysX(registry->transforms);
 
-void PhysicsSystem::SyncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms)
-{
-    for (auto& [entity, physActor] : actors)
-    {
-        if (!transforms.Has(entity)) continue;
-        auto& t = transforms.Get(entity);
-        glm::vec3 pos = t.GetWorldPosition();
-        PxTransform pose(PxVec3(pos.x, pos.y, pos.z));
-        physActor->actor->setGlobalPose(pose);
-    }
-}
-
-void PhysicsSystem::update(
-    float dt,
-    ComponentStorage<TransformComponent>& transforms
-) {
-
-    scene->simulate(dt);
-    scene->fetchResults(true);
-
-    UpdateTransforms(transforms);
-
-}
-
-void PhysicsSystem::UpdateTransforms(ComponentStorage<TransformComponent>& transforms) {
-    for (auto& [entity, physicsActor] : actors)
-    {
-        if (!physicsActor->actor)
-            continue;
-
-      
-        if (!transforms.Has(entity))
-            continue;
-
-        auto& transform = transforms.Get(entity);
-
-        
-
-        if (physicsActor->type == PhysicsActor::Type::STATIC) {
-            PxTransform pose(PxVec3(
-                transform.GetWorldPosition().x,
-                transform.GetWorldPosition().y,
-                transform.GetWorldPosition().z)
-            );
-
-            physicsActor->actor->setGlobalPose(pose);
-            continue;
-
-        }
-
-        physx::PxTransform pose = physicsActor->actor->getGlobalPose();
-
-        transform.localPosition = {
-            pose.p.x,
-            pose.p.y,
-            pose.p.z
+    registry->colliders.onAdd = [this](Entity e, ColliderComponent&)
+        {
+            pendingColliderRemoved.erase(e);
+            pendingColliderAdded.insert(e);
         };
 
-        transform.localRotation = {
-            pose.q.x,
-            pose.q.y,
-            pose.q.z,
-            pose.q.w
+    registry->colliders.onRemove = [this](Entity e, ColliderComponent&)
+        {
+            pendingColliderAdded.erase(e);
+            pendingColliderRemoved.insert(e);
         };
 
-        transform.localDirty = true;
-        transform.worldDirty = true;
-    }
-    
-}
-
-void PhysicsSystem::AddCollider(
-    const Entity& entity,
-    ColliderComponent& collider,
-    ColliderShape::Type type
-)
-{
-    // Create new collider shape
-    ColliderShape shape;
-    shape.type = type;
-
-    collider.shapes.push_back(shape);
-    ColliderShape& newShape = collider.shapes.back();
-
-    PxRigidActor* pxActor = nullptr;
-
-    // ------------------------------------------------
-    // Ensure actor exists
-    // ------------------------------------------------
-    if (actors.find(entity) == actors.end())
-    {
-        PxTransform pose(PxVec3(0, 0, 0));
-
-        pxActor = physics->createRigidStatic(pose);
-        pxActor->userData = (void*)(uint64_t)entity;
-
-        scene->addActor(*pxActor);
-
-        auto physActor = std::make_unique<PhysicsActor>();
-        physActor->actor = pxActor;
-        physActor->type = PhysicsActor::Type::STATIC;
-
-        actors[entity] = std::move(physActor);
-    }
-    else
-    {
-        pxActor = actors[entity]->actor;
-    }
-
-    PhysicsActor* actor = actors[entity].get();
-
-    // ------------------------------------------------
-    // Create PhysX shape
-    // ------------------------------------------------
-    if (newShape.type == ColliderShape::Type::Box)
-    {
-        PxBoxGeometry geom(
-            newShape.size.x * 0.5f,
-            newShape.size.y * 0.5f,
-            newShape.size.z * 0.5f
-        );
-
-        newShape.runtimeShape = physics->createShape(geom, *material);
-    }
-    else if (newShape.type == ColliderShape::Type::Sphere)
-    {
-        PxSphereGeometry geom(newShape.radius);
-
-        newShape.runtimeShape = physics->createShape(geom, *material);
-    }
-    else if (newShape.type == ColliderShape::Type::Capsule)
-    {
-        PxCapsuleGeometry geom(
-            newShape.radius,
-            newShape.height * 0.5f
-        );
-
-        newShape.runtimeShape = physics->createShape(geom, *material);
-    }
-
-    // ------------------------------------------------
-    // Attach shape to actor
-    // ------------------------------------------------
-    if (newShape.runtimeShape)
-    {
-        actor->actor->attachShape(*newShape.runtimeShape);
-    }
-}
-
-void PhysicsSystem::AddRigidbody(
-    const Entity& entity,
-    RigidbodyComponent& rb
-)
-{
-    PhysicsActor* physActor = nullptr;
-
-    // Check if actor exists
-    if (actors.find(entity) != actors.end())
-        physActor = actors[entity].get();
-
-    // --------------------------------------------------
-    // Case 1 : No actor exists -> create dynamic actor
-    // --------------------------------------------------
-    if (!physActor)
-    {
-        PxTransform transform(PxIdentity);
-
-        PxRigidDynamic* dynamicActor = physics->createRigidDynamic(transform);
-        dynamicActor->setMass(rb.mass);
-
-        scene->addActor(*dynamicActor);
-
-        auto newActor = std::make_unique<PhysicsActor>();
-        newActor->actor = dynamicActor;
-        newActor->type = PhysicsActor::Type::DYNAMIC;
-
-        actors[entity] = std::move(newActor);
-
-        return;
-    }
-
-    PxRigidActor* actor = physActor->actor;
-
-    // --------------------------------------------------
-    // Case 2 : Already dynamic
-    // --------------------------------------------------
-    if (physActor->type == PhysicsActor::Type::DYNAMIC)
-    {
-        PxRigidDynamic* dynamicActor = static_cast<PxRigidDynamic*>(actor);
-
-        dynamicActor->setMass(rb.mass);
-
-        return;
-    }
-
-    // --------------------------------------------------
-    // Case 3 : Static -> Convert to Dynamic
-    // --------------------------------------------------
-    if (physActor->type == PhysicsActor::Type::STATIC)
-    {
-        PxRigidStatic* staticActor = static_cast<PxRigidStatic*>(actor);
-
-        PxTransform transform = staticActor->getGlobalPose();
-        PxRigidDynamic* dynamicActor = physics->createRigidDynamic(transform);
-
-        dynamicActor->setMass(rb.mass);
-
-        // Transfer shapes
-        PxShape* shapes[32];
-        PxU32 shapeCount = staticActor->getNbShapes();
-        staticActor->getShapes(shapes, shapeCount);
-
-        for (PxU32 i = 0; i < shapeCount; i++)
+    registry->rigidBodies.onAdd = [this](Entity e, RigidbodyComponent&)
         {
-            PxShape* shape = shapes[i];
+            pendingRigidbodyRemoved.erase(e);
+            pendingRigidbodyAdded.insert(e);
+        };
 
-            staticActor->detachShape(*shape);
-            dynamicActor->attachShape(*shape);
-        }
-
-        scene->addActor(*dynamicActor);
-
-        scene->removeActor(*staticActor);
-        staticActor->release();
-
-        physActor->actor = dynamicActor;
-        physActor->type = PhysicsActor::Type::DYNAMIC;
-    }
-}
-
-void PhysicsSystem::DeleteColliderShape(
-    const Entity& entity,
-    ColliderComponent& collider,
-    size_t shapeIndex
-)
-{
-    if (shapeIndex >= collider.shapes.size())
-        return;
-
-    ColliderShape& shape = collider.shapes[shapeIndex];
-
-    // Find actor
-    auto it = actors.find(entity);
-    if (it != actors.end())
-    {
-        physx::PxRigidActor* actor = it->second->actor;
-
-        if (shape.runtimeShape)
+    registry->rigidBodies.onRemove = [this](Entity e, RigidbodyComponent&)
         {
-            actor->detachShape(*shape.runtimeShape);
-            shape.runtimeShape->release();
-            shape.runtimeShape = nullptr;
-        }
-    }
-
-    // Remove shape from vector
-    collider.shapes.erase(collider.shapes.begin() + shapeIndex);
+            pendingRigidbodyAdded.erase(e);
+            pendingRigidbodyRemoved.insert(e);
+        };
 }
 
-void PhysicsSystem::DeleteCollider(
-    const Entity& entity,
-    ColliderComponent& collider
-)
+void PhysicsSystem::ClearScene()
 {
-    auto it = actors.find(entity);
-    if (it == actors.end())
-        return;
+    for (auto& [entity, actor] : actors)
+        if (actor->actor) physxScene->removeActor(*actor->actor);
 
-    physx::PxRigidActor* actor = it->second->actor;
-
-    // Release all shapes
-    for (auto& shape : collider.shapes)
-    {
-        if (shape.runtimeShape)
-        {
-            actor->detachShape(*shape.runtimeShape);
-            shape.runtimeShape->release();
-            shape.runtimeShape = nullptr;
-        }
-    }
-
-    collider.shapes.clear();
-
-    // If actor is static -> delete actor
-    if (actor->is<physx::PxRigidStatic>())
-    {
-        scene->removeActor(*actor);
-        actor->release();
-        actors.erase(entity);
-    }
-
-    // If actor is dynamic -> do nothing
+    actors.clear();
+    pendingColliderAdded.clear();
+    pendingColliderRemoved.clear();
+    pendingRigidbodyAdded.clear();
+    pendingRigidbodyRemoved.clear();
 }
 
-void PhysicsSystem::DeleteRigidBody(
-    const Entity& entity,
-    ComponentStorage<ColliderComponent>& colliders
-)
+void PhysicsSystem::Shutdown()
 {
-    auto it = actors.find(entity);
-    if (it == actors.end())
-        return;
-
-    physx::PxRigidActor* actor = it->second->actor;
-
-    // Actor must be dynamic
-    physx::PxRigidDynamic* dynamicActor = actor->is<physx::PxRigidDynamic>();
-    if (!dynamicActor)
-        return;
-
-    // -------- Check if colliders exist --------
-    if (!colliders.Has(entity))
-    {
-        scene->removeActor(*dynamicActor);
-        dynamicActor->release();
-        actors.erase(entity);
-        return;
-    }
-
-    auto& col = colliders.Get(entity);
-
-    if (col.shapes.empty())
-    {
-        scene->removeActor(*dynamicActor);
-        dynamicActor->release();
-        actors.erase(entity);
-        return;
-    }
-
-    // -------- Create Static Actor --------
-    physx::PxTransform transform = dynamicActor->getGlobalPose();
-
-    physx::PxRigidStatic* staticActor =
-        physics->createRigidStatic(transform);
-
-    // -------- Move Shapes --------
-    physx::PxShape* shapes[32];
-    physx::PxU32 shapeCount = dynamicActor->getNbShapes();
-
-    dynamicActor->getShapes(shapes, shapeCount);
-
-    for (physx::PxU32 i = 0; i < shapeCount; i++)
-    {
-        physx::PxShape* shape = shapes[i];
-
-        dynamicActor->detachShape(*shape);
-        staticActor->attachShape(*shape);
-    }
-
-    // -------- Add static actor --------
-    scene->addActor(*staticActor);
-
-    // -------- Delete dynamic actor --------
-    scene->removeActor(*dynamicActor);
-    dynamicActor->release();
-
-    actors[entity]->actor = staticActor;
-    actors[entity]->type = PhysicsActor::Type::STATIC;
-}
-
-void PhysicsSystem::shutdown() {
-    if (scene) scene->release();
+    if (physxScene) physxScene->release();
     if (dispatcher) dispatcher->release();
-    if (physics) physics->release();
+    if (physics)    physics->release();
     if (foundation) foundation->release();
 }
 
 
+// =============================================================================
+//  Update
+// =============================================================================
 
-void PhysicsSystem::CreateGroundPlane()
+void PhysicsSystem::UpdateRuntime(float dt, ComponentStorage<TransformComponent>& transforms)
 {
-    // Plane: normal (0,1,0) → horizontal ground
-    // distance 0 → passes through origin
-
-    physx::PxRigidStatic* plane =
-        physx::PxCreatePlane(
-            *physics,
-            physx::PxPlane(0, 1, 0, 0),
-            *material
-        );
-
-    scene->addActor(*plane);
+    flushPending();
+    physxScene->simulate(dt);
+    physxScene->fetchResults(true);
+    updateTransforms(transforms);
 }
 
+
+// =============================================================================
+//  FlushPending
+// =============================================================================
+
+void PhysicsSystem::flushPending()
+{
+    if (pendingColliderAdded.empty() &&
+        pendingColliderRemoved.empty() &&
+        pendingRigidbodyAdded.empty() &&
+        pendingRigidbodyRemoved.empty())
+        return;
+
+    for (Entity e : pendingColliderRemoved)
+        if (registry->colliders.Has(e))
+            teardownCollider(e, registry->colliders.Get(e));
+    pendingColliderRemoved.clear();
+
+    for (Entity e : pendingRigidbodyRemoved)
+    {
+        ColliderComponent* col = registry->colliders.Has(e)
+            ? &registry->colliders.Get(e) : nullptr;
+        teardownRigidbody(e, col);
+    }
+    pendingRigidbodyRemoved.clear();
+
+    for (Entity e : pendingColliderAdded)
+        if (registry->colliders.Has(e))
+            buildColliderActor(e, registry->colliders.Get(e));
+    pendingColliderAdded.clear();
+
+    for (Entity e : pendingRigidbodyAdded)
+        if (registry->rigidBodies.Has(e))
+            buildRigidbodyActor(e, registry->rigidBodies.Get(e));
+    pendingRigidbodyAdded.clear();
+}
+
+
+// =============================================================================
+//  Actor construction
+// =============================================================================
+
+void PhysicsSystem::buildColliderActor(Entity entity, ColliderComponent& collider)
+{
+    PxRigidActor* pxActor = nullptr;
+    glm::vec3 ws(1.0f);
+
+    if (actors.find(entity) == actors.end())
+    {
+        PxTransform pose(PxVec3(0.f));
+        if (registry->transforms.Has(entity))
+        {
+            auto& t = registry->transforms.Get(entity);
+            glm::vec3 pos = t.GetWorldPosition();
+            glm::quat rot = t.GetWorldRotation();
+            ws = t.GetWorldScale();
+            pose = PxTransform(PxVec3(pos.x, pos.y, pos.z),
+                PxQuat(rot.x, rot.y, rot.z, rot.w));
+        }
+
+        pxActor = physics->createRigidStatic(pose);
+        pxActor->userData = (void*)(uint64_t)entity;
+        physxScene->addActor(*pxActor);
+
+        auto pa = std::make_unique<PhysicsActor>();
+        pa->actor = pxActor;
+        pa->type = PhysicsActor::Type::STATIC;
+        actors[entity] = std::move(pa);
+    }
+    else
+    {
+        pxActor = actors[entity]->actor;
+        if (registry->transforms.Has(entity))
+            ws = registry->transforms.Get(entity).GetWorldScale();
+    }
+
+    for (auto& shape : collider.shapes)
+    {
+        if (shape.runtimeShape) continue;
+
+        if (shape.type == ColliderShape::Type::Box)
+        {
+            PxBoxGeometry geom(shape.size.x * ws.x * 0.5f,
+                shape.size.y * ws.y * 0.5f,
+                shape.size.z * ws.z * 0.5f);
+            shape.runtimeShape = physics->createShape(geom, *material);
+        }
+        else if (shape.type == ColliderShape::Type::Sphere)
+        {
+            float us = glm::max(ws.x, glm::max(ws.y, ws.z));
+            shape.runtimeShape = physics->createShape(PxSphereGeometry(shape.radius * us), *material);
+        }
+        else if (shape.type == ColliderShape::Type::Capsule)
+        {
+            float rs = glm::max(ws.y, ws.z);
+            PxCapsuleGeometry geom(shape.radius * rs, shape.height * ws.x * 0.5f);
+            shape.runtimeShape = physics->createShape(geom, *material);
+        }
+
+        if (shape.runtimeShape) pxActor->attachShape(*shape.runtimeShape);
+    }
+}
+
+void PhysicsSystem::buildRigidbodyActor(Entity entity, RigidbodyComponent& rb)
+{
+    auto it = actors.find(entity);
+
+    // Case 1: no actor yet — create standalone dynamic
+    if (it == actors.end())
+    {
+        glm::vec3 pos(0.0f);
+        glm::quat rot(1, 0, 0, 0);
+        if (registry->transforms.Has(entity))
+        {
+            auto& t = registry->transforms.Get(entity);
+            pos = t.GetWorldPosition();
+            rot = t.GetWorldRotation();
+        }
+
+        PxRigidDynamic* dyn = physics->createRigidDynamic(
+            PxTransform(PxVec3(pos.x, pos.y, pos.z),
+                PxQuat(rot.x, rot.y, rot.z, rot.w)));
+
+        dyn->userData = (void*)(uint64_t)entity;
+        syncRigidbodyProperties(dyn, rb);
+        physxScene->addActor(*dyn);
+
+        auto pa = std::make_unique<PhysicsActor>();
+        pa->actor = dyn;
+        pa->type = rb.isKinematic ? PhysicsActor::Type::KINEMATIC : PhysicsActor::Type::DYNAMIC;
+        actors[entity] = std::move(pa);
+        rb.dirty = false;
+        return;
+    }
+
+    PhysicsActor* pa = it->second.get();
+
+    // Case 2: already dynamic/kinematic — re-sync all properties
+    if (pa->type == PhysicsActor::Type::DYNAMIC ||
+        pa->type == PhysicsActor::Type::KINEMATIC)
+    {
+        syncRigidbodyProperties(static_cast<PxRigidDynamic*>(pa->actor), rb);
+        pa->type = rb.isKinematic ? PhysicsActor::Type::KINEMATIC : PhysicsActor::Type::DYNAMIC;
+        rb.dirty = false;
+        return;
+    }
+
+    // Case 3: static exists (collider first) — promote to dynamic
+    PxRigidStatic* staticActor = static_cast<PxRigidStatic*>(pa->actor);
+    PxTransform     pose = staticActor->getGlobalPose();
+    PxRigidDynamic* dynamicActor = physics->createRigidDynamic(pose);
+
+
+    dynamicActor->userData = (void*)(uint64_t)entity;
+
+    PxShape* shapes[32];
+    PxU32 count = staticActor->getNbShapes();
+    staticActor->getShapes(shapes, count);
+    for (PxU32 i = 0; i < count; ++i)
+    {
+        staticActor->detachShape(*shapes[i]);
+        dynamicActor->attachShape(*shapes[i]);
+    }
+
+    syncRigidbodyProperties(dynamicActor, rb);
+
+    physxScene->addActor(*dynamicActor);
+    physxScene->removeActor(*staticActor);
+    staticActor->release();
+
+    pa->actor = dynamicActor;
+    pa->type = rb.isKinematic ? PhysicsActor::Type::KINEMATIC : PhysicsActor::Type::DYNAMIC;
+
+    drainPendingCommands(entity, dynamicActor, rb);
+
+    rb.dirty = false;
+}
+
+
+// =============================================================================
+//  Actor teardown
+// =============================================================================
+
+void PhysicsSystem::teardownCollider(Entity entity, ColliderComponent& collider)
+{
+    auto it = actors.find(entity);
+    if (it == actors.end()) return;
+
+    PxRigidActor* actor = it->second->actor;
+
+    for (auto& shape : collider.shapes)
+    {
+        if (!shape.runtimeShape) continue;
+        actor->detachShape(*shape.runtimeShape);
+        shape.runtimeShape->release();
+        shape.runtimeShape = nullptr;
+    }
+    collider.shapes.clear();
+
+    if (it->second->type == PhysicsActor::Type::STATIC)
+    {
+        physxScene->removeActor(*actor);
+        actor->release();
+        actors.erase(it);
+    }
+}
+
+void PhysicsSystem::teardownRigidbody(Entity entity, ColliderComponent* collider)
+{
+    auto it = actors.find(entity);
+    if (it == actors.end()) return;
+
+    PxRigidDynamic* dyn = it->second->actor->is<PxRigidDynamic>();
+    if (!dyn) return;
+
+    if (!collider || collider->shapes.empty())
+    {
+        physxScene->removeActor(*dyn);
+        dyn->release();
+        actors.erase(it);
+        return;
+    }
+
+    // Collider still present — demote dynamic back to static
+    PxTransform    pose = dyn->getGlobalPose();
+    PxRigidStatic* staticActor = physics->createRigidStatic(pose);
+    staticActor->userData = (void*)(uint64_t)entity;
+
+    PxShape* shapes[32];
+    PxU32 count = dyn->getNbShapes();
+    dyn->getShapes(shapes, count);
+    for (PxU32 i = 0; i < count; ++i)
+    {
+        dyn->detachShape(*shapes[i]);
+        staticActor->attachShape(*shapes[i]);
+    }
+
+    physxScene->addActor(*staticActor);
+    physxScene->removeActor(*dyn);
+    dyn->release();
+
+    it->second->actor = staticActor;
+    it->second->type = PhysicsActor::Type::STATIC;
+}
+
+
+// =============================================================================
+//  Transform sync
+// =============================================================================
+
+void PhysicsSystem::SyncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms)
+{
+    for (auto& [entity, pa] : actors)
+    {
+        if (!transforms.Has(entity)) continue;
+        auto& t = transforms.Get(entity);
+        glm::vec3 pos = t.GetWorldPosition();
+        glm::quat rot = t.GetWorldRotation();
+        pa->actor->setGlobalPose(PxTransform(PxVec3(pos.x, pos.y, pos.z),
+            PxQuat(rot.x, rot.y, rot.z, rot.w)));
+    }
+}
+
+void PhysicsSystem::updateTransforms(ComponentStorage<TransformComponent>& transforms)
+{
+    for (auto& [entity, pa] : actors)
+    {
+        if (!pa->actor || !transforms.Has(entity)) continue;
+        auto& t = transforms.Get(entity);
+
+        if (pa->type == PhysicsActor::Type::STATIC)
+        {
+            glm::vec3 pos = t.GetWorldPosition();
+            glm::quat rot = t.GetWorldRotation();
+            pa->actor->setGlobalPose(PxTransform(PxVec3(pos.x, pos.y, pos.z),
+                PxQuat(rot.x, rot.y, rot.z, rot.w)));
+            continue;
+        }
+
+        PxTransform pose = pa->actor->getGlobalPose();
+        t.localPosition = { pose.p.x, pose.p.y, pose.p.z };
+        t.localRotation = glm::quat(pose.q.w, pose.q.x, pose.q.y, pose.q.z );
+        t.localDirty = true;
+        t.worldDirty = true;
+    }
+}
+
+
+// =============================================================================
+//  Misc private helpers
+// =============================================================================
+
+void PhysicsSystem::createGroundPlane()
+{
+    PxRigidStatic* plane = PxCreatePlane(*physics, PxPlane(0, 1, 0, 0), *material);
+    physxScene->addActor(*plane);
+}
+
+PxRigidDynamic* PhysicsSystem::getDynamicActor(Entity e) const
+{
+    auto it = actors.find(e);
+    if (it == actors.end()) return nullptr;
+    if (it->second->type == PhysicsActor::Type::STATIC) return nullptr;
+    return static_cast<PxRigidDynamic*>(it->second->actor);
+}
+
+PxForceMode::Enum PhysicsSystem::toPxForceMode(ForceMode mode)
+{
+    switch (mode)
+    {
+    case ForceMode::Force:          return PxForceMode::eFORCE;
+    case ForceMode::Impulse:        return PxForceMode::eIMPULSE;
+    case ForceMode::VelocityChange: return PxForceMode::eVELOCITY_CHANGE;
+    case ForceMode::Acceleration:   return PxForceMode::eACCELERATION;
+    default:                        return PxForceMode::eFORCE;
+    }
+}
+
+// Pushes all structural fields from rb into an already-created PxRigidDynamic
+void PhysicsSystem::syncRigidbodyProperties(PxRigidDynamic* actor, const RigidbodyComponent& rb)
+{
+    if (actor->getNbShapes() > 0)
+        PxRigidBodyExt::setMassAndUpdateInertia(*actor, rb.mass);
+    else
+        actor->setMass(rb.mass);
+
+    actor->setLinearDamping(rb.linearDamping);
+    actor->setAngularDamping(rb.angularDamping);
+
+    actor->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !rb.useGravity);
+
+    actor->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, rb.isKinematic);
+
+    actor->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_X, rb.lockLinearX);
+    actor->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_Y, rb.lockLinearY);
+    actor->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_Z, rb.lockLinearZ);
+    actor->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_X, rb.lockAngularX);
+    actor->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y, rb.lockAngularY);
+    actor->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z, rb.lockAngularZ);
+
+    if (!rb.isKinematic)
+    {
+        actor->setLinearVelocity(PxVec3(rb.linearVelocity.x, rb.linearVelocity.y, rb.linearVelocity.z));
+        actor->setAngularVelocity(PxVec3(rb.angularVelocity.x, rb.angularVelocity.y, rb.angularVelocity.z));
+    }
+    else
+    {
+        actor->setLinearVelocity(PxVec3(0.f));
+        actor->setAngularVelocity(PxVec3(0.f));
+    }
+}
+
+void PhysicsSystem::drainPendingCommands(Entity e, PxRigidDynamic* dyn, RigidbodyComponent& rb)
+{
+    if (dyn->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return;
+
+
+    for (auto& cmd : rb.pendingForces)
+    {
+        PxVec3 v(cmd.value.x, cmd.value.y, cmd.value.z);
+        if (cmd.type == ForceCommand::Type::Force)
+            dyn->addForce(v, toPxForceMode((ForceMode)cmd.mode));
+        else
+            dyn->addTorque(v, toPxForceMode((ForceMode)cmd.mode));
+    }
+
+    rb.pendingForces.clear();
+}
+
+// =============================================================================
+//  Collider API
+// =============================================================================
+
+void PhysicsSystem::AddCollider(Entity entity, ColliderComponent& col, ColliderShape::Type type)
+{
+    ColliderShape shape;
+    shape.type = type;
+    col.shapes.push_back(shape);
+    buildColliderActor(entity, col);
+}
+
+void PhysicsSystem::DeleteColliderShape(Entity entity, ColliderComponent& col, size_t shapeIndex)
+{
+    if (shapeIndex >= col.shapes.size()) return;
+
+    auto it = actors.find(entity);
+    if (it != actors.end())
+    {
+        ColliderShape& shape = col.shapes[shapeIndex];
+        if (shape.runtimeShape)
+        {
+            it->second->actor->detachShape(*shape.runtimeShape);
+            shape.runtimeShape->release();
+            shape.runtimeShape = nullptr;
+        }
+    }
+    col.shapes.erase(col.shapes.begin() + shapeIndex);
+}
+
+void PhysicsSystem::DeleteCollider(Entity entity, ColliderComponent& col)
+{
+    teardownCollider(entity, col);
+}
+
+void PhysicsSystem::DeleteRigidBody(Entity entity, ColliderComponent* col)
+{
+    teardownRigidbody(entity, col);
+}
+
+
+// =============================================================================
+//  Rigidbody structural setters
+// =============================================================================
+
+void PhysicsSystem::SetMass(Entity e, float mass)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.mass = mass;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return;
+    if (dyn->getNbShapes() > 0)
+        PxRigidBodyExt::setMassAndUpdateInertia(*dyn, mass);
+    else
+        dyn->setMass(mass);
+}
+
+void PhysicsSystem::SetGravityEnabled(Entity e, bool enabled)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.useGravity = enabled;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (dyn) dyn->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !enabled);
+}
+
+void PhysicsSystem::SetKinematic(Entity e, bool kinematic)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.isKinematic = kinematic;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return;
+
+    if (kinematic)
+    {
+        dyn->setLinearVelocity(PxVec3(0.f));
+        dyn->setAngularVelocity(PxVec3(0.f));
+    }
+    dyn->setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, kinematic);
+
+    auto it = actors.find(e);
+    if (it != actors.end())
+        it->second->type = kinematic ? PhysicsActor::Type::KINEMATIC : PhysicsActor::Type::DYNAMIC;
+}
+
+void PhysicsSystem::SetLinearDamping(Entity e, float damping)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.linearDamping = damping;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (dyn) dyn->setLinearDamping(damping);
+}
+
+void PhysicsSystem::SetAngularDamping(Entity e, float damping)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.angularDamping = damping;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (dyn) dyn->setAngularDamping(damping);
+}
+
+void PhysicsSystem::SetLinearLock(Entity e, bool x, bool y, bool z)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.lockLinearX = x; rb.lockLinearY = y; rb.lockLinearZ = z;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return;
+    dyn->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_X, x);
+    dyn->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_Y, y);
+    dyn->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_LINEAR_Z, z);
+}
+
+void PhysicsSystem::SetAngularLock(Entity e, bool x, bool y, bool z)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.lockAngularX = x; rb.lockAngularY = y; rb.lockAngularZ = z;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return;
+    dyn->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_X, x);
+    dyn->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_Y, y);
+    dyn->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z, z);
+}
+
+
+// =============================================================================
+//  Velocity API
+// =============================================================================
+
+void PhysicsSystem::SetLinearVelocity(Entity e, glm::vec3 v)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.linearVelocity = v;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return;
+    if (dyn->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return;
+    dyn->setLinearVelocity(PxVec3(v.x, v.y, v.z));
+}
+
+void PhysicsSystem::SetAngularVelocity(Entity e, glm::vec3 v)
+{
+    if (!registry->rigidBodies.Has(e)) return;
+    auto& rb = registry->rigidBodies.Get(e);
+    rb.angularVelocity = v;
+    rb.dirty = true;
+
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return;
+    if (dyn->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return;
+    dyn->setAngularVelocity(PxVec3(v.x, v.y, v.z));
+}
+
+glm::vec3 PhysicsSystem::GetLinearVelocity(Entity e) const
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return glm::vec3(0.0f);
+    PxVec3 v = dyn->getLinearVelocity();
+    return { v.x, v.y, v.z };
+}
+
+glm::vec3 PhysicsSystem::GetAngularVelocity(Entity e) const
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return glm::vec3(0.0f);
+    PxVec3 v = dyn->getAngularVelocity();
+    return { v.x, v.y, v.z };
+}
+
+
+// =============================================================================
+//  Force API
+// =============================================================================
+
+void PhysicsSystem::AddForce(Entity e, glm::vec3 force, ForceMode mode)
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn)
+    {
+        if (registry->rigidBodies.Has(e))
+            registry->rigidBodies.Get(e).pendingForces.push_back(
+                { force, ForceCommand::Type::Force, (int)mode });
+        return;
+    }
+    if (dyn->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return;
+    dyn->addForce(PxVec3(force.x, force.y, force.z), toPxForceMode(mode));
+}
+
+void PhysicsSystem::AddTorque(Entity e, glm::vec3 torque, ForceMode mode)
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn)
+    {
+        if (registry->rigidBodies.Has(e))
+            registry->rigidBodies.Get(e).pendingForces.push_back(
+                { torque, ForceCommand::Type::Torque, (int)mode });
+        return;
+    }
+    if (dyn->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return;
+    dyn->addTorque(PxVec3(torque.x, torque.y, torque.z), toPxForceMode(mode));
+}
+
+void PhysicsSystem::ClearForces(Entity e)
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return;
+    dyn->clearForce(PxForceMode::eFORCE);
+    dyn->clearTorque(PxForceMode::eFORCE);
+}
+
+
+// =============================================================================
+//  Sleep API
+// =============================================================================
+
+void PhysicsSystem::WakeUp(Entity e)
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (dyn) dyn->wakeUp();
+}
+
+void PhysicsSystem::PutToSleep(Entity e)
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (dyn) dyn->putToSleep();
+}
+
+bool PhysicsSystem::IsSleeping(Entity e) const
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+    if (!dyn) return true;
+    return dyn->isSleeping();
+}

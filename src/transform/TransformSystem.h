@@ -9,19 +9,13 @@
 
 #include "scene/components/ComponentStorage.h"
 
-#include "../utils/UUID.h"
+#include "utils/UUID.h"
 
 namespace Lengine {
     class TransformSystem
     {
     public:
 
-        static void RecalculateLocalMatrix(TransformComponent& t)
-        {
-            t.localMatrix = glm::translate(glm::mat4(1.0f), t.localPosition)
-                * glm::mat4_cast(t.localRotation)  
-                * glm::scale(glm::mat4(1.0f), t.localScale);
-        }
 
         static void DecomposeMatrix(
             const glm::mat4& m,
@@ -66,7 +60,7 @@ namespace Lengine {
             const ComponentStorage<HierarchyComponent>& hierarchys
         );
 
-       
+    private:
     };
 
 

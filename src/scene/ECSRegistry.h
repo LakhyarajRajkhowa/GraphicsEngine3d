@@ -17,11 +17,13 @@ namespace Lengine {
     {
     public:
 
-
-        Entity CreateEntity()
+        Entity IncreaseNExtEntityId() {
+            return nextEntityID++;
+        }
+        Entity createEntity()
         {
-            Entity id = m_NextID++;
-            m_Entities.push_back(id);
+            Entity id = nextEntityID++;
+            entities.push_back(id);
 
             return id;
         }
@@ -43,18 +45,23 @@ namespace Lengine {
             lights.Remove(id);
             scripts.Remove(id);
 
-            auto it = std::find(m_Entities.begin(), m_Entities.end(), id);
-            if (it != m_Entities.end())
-                m_Entities.erase(it);
+            auto it = std::find(entities.begin(), entities.end(), id);
+            if (it != entities.end())
+                entities.erase(it);
         }
 
         bool IsAlive(Entity id) const
         {
-            return std::find(m_Entities.begin(), m_Entities.end(), id) != m_Entities.end();
+            return std::find(entities.begin(), entities.end(), id) != entities.end();
         }
 
-        std::vector<Entity>& GetEntities()  { return m_Entities; }
-        const std::vector<Entity>& GetEntities() const { return m_Entities; }
+        void SyncNextEntityID(Entity id)
+        {
+            nextEntityID = id;
+        }
+
+        std::vector<Entity>& GetEntities()  { return entities; }
+        const std::vector<Entity>& GetEntities() const { return entities; }
 
         // Find the smallest storage size among all requested types
         template<typename... Ts>
@@ -92,8 +99,8 @@ namespace Lengine {
 
         void Clear()
         {
-            m_Entities.clear();
-            m_NextID = 1;
+            entities.clear();
+            nextEntityID = 1;
             transforms.Clear();    meshRenderers.Clear();  meshFilters.Clear();
             skeletons.Clear();     animations.Clear();     colliders.Clear();
             controllers.Clear();   movements.Clear();      rigidBodies.Clear();
@@ -106,8 +113,8 @@ namespace Lengine {
         const std::vector<Entity>& GetStorageEntities() const;
 
     private:
-        std::vector<Entity> m_Entities;
-        Entity              m_NextID = 1;
+        std::vector<Entity> entities;
+        Entity              nextEntityID = 1;
 
         template<typename T> size_t StorageSize() const;
 

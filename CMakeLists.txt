@@ -115,7 +115,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC
 # Link libraries
 # ────────────────────────────────────────────────
 
-set(PHYSX_LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib/physx/$<IF:$<CONFIG:Debug>,MTd,MT>)
+set(PHYSX_LIB ${CMAKE_CURRENT_SOURCE_DIR}/lib/physx/$<IF:$<CONFIG:Debug>,MDd,MD>)
 
 target_link_directories(${PROJECT_NAME} PUBLIC
     ${SDL2_LIB_DIR}

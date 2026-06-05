@@ -7,6 +7,7 @@
 #define MAX_LIGHTS 64
 
 namespace Lengine {
+
     enum class LightType {
         Directional = 0,
         Point = 1,
@@ -17,7 +18,19 @@ namespace Lengine {
     class Light {
     public:
         Light() = default;
-        Light(Entity entityID) : id(entityID) {}
+
+        Light(Entity entityID)
+            : id(entityID) {}
+
+        Light(Entity entityID,
+            LightType lightType,
+            const glm::vec3& lightColor,
+            float lightIntensity = 1.0f)
+            : id(entityID),
+            type(lightType),
+            color(lightColor),
+            intensity(lightIntensity)
+        {}
 
         Entity id = NullEntity;
         LightType type = LightType::Directional;
@@ -34,7 +47,5 @@ namespace Lengine {
 
         bool castShadow = false;
     };
-
-
 
 }

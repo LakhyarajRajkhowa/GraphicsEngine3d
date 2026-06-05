@@ -1,14 +1,14 @@
 #version 330 core
 
-layout(location = 0) in vec3 aPos;    // vertex position
-layout(location = 1) in vec3 aColor;  // vertex color
+layout(location = 0) in vec3 a_Pos;
+layout(location = 1) in vec3 a_Color;
 
-out vec3 fragColor;
+uniform mat4 u_ViewProj;
 
-uniform mat4 u_ViewProj; // combined view-projection matrix
+out vec3 v_Color;
 
 void main()
 {
-    fragColor = aColor;
-    gl_Position = u_ViewProj * vec4(aPos, 1.0);
+    v_Color     = a_Color;
+    gl_Position = u_ViewProj * vec4(a_Pos, 1.0);
 }

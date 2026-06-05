@@ -10,6 +10,22 @@
 namespace Lengine {
     struct TransformComponent
     {
+        TransformComponent() = default;
+
+        explicit TransformComponent(
+            const glm::vec3& position,
+            const glm::quat& rotation = glm::quat(1, 0, 0, 0),
+            const glm::vec3& scale = glm::vec3(1.0f)
+        )
+            : localPosition(position)
+            , localRotation(rotation)
+            , localScale(scale)
+
+        {
+            RecalculateLocalMatrix();
+            worldMatrix = localMatrix;
+        }
+
         glm::vec3 localPosition{ 0.0f };
         glm::quat localRotation = glm::quat(1, 0, 0, 0); // radians
         glm::vec3 localScale{ 1.0f };
@@ -64,34 +80,46 @@ namespace Lengine {
             return glm::inverse(world);
         }
 
+
         void SetPosition(const glm::vec3& pos)
         {
             localPosition = pos;
-            localDirty = true;
-            worldDirty = true;
+            RecalculateLocalMatrix();
+            worldMatrix = localMatrix;
+
+
         }
 
         void Translate(const glm::vec3& delta)
         {
             localPosition += delta;
-            localDirty = true;
-            worldDirty = true;
+            RecalculateLocalMatrix();
+            worldMatrix = localMatrix;
+
         }
 
         void SetRotation(const glm::quat& rot)
         {
             localRotation = rot;
-            localDirty = true;
-            worldDirty = true;
+            RecalculateLocalMatrix();
+            worldMatrix = localMatrix;
+
         }
 
         void SetScale(const glm::vec3& scale)
         {
             localScale = scale;
-            localDirty = true;
-            worldDirty = true;
+            RecalculateLocalMatrix();
+            worldMatrix = localMatrix;
+
         }
 
+         void RecalculateLocalMatrix()
+        {
+            localMatrix = glm::translate(glm::mat4(1.0f), localPosition)
+                * glm::mat4_cast(localRotation)
+                * glm::scale(glm::mat4(1.0f), localScale);
+        }
 
     };
 

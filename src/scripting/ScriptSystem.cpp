@@ -10,8 +10,7 @@ namespace Lengine {
 
     void ScriptSystem::Update(float dt) {
         CheckHotReload();
-
-        OnUpdate(dt);
+        OnUpdate(dt);    
     }
 
 
@@ -34,19 +33,20 @@ namespace Lengine {
         auto& scene = sceneManager.GetRuntimeScene();
         Registry& registry = scene->GetRegistry();
 
+
         for (Entity e : registry.scripts.GetEntities())
         {
             ScriptComponent& sc = registry.scripts.Get(e);
 
             for (const std::string& name : sc.scriptNames)
             {
-                ScriptableEntity* s = library.Instantiate(name, e, *scene, input);
+                ScriptableEntity* s = library.Instantiate(name, e, *scene, input, physics);
                 if (!s) continue;
 
                 ownedScripts[e].push_back(s);
                 sc.scripts.push_back(s);
 
-                s->OnCreate();  // entity, registry, input already set by constructor
+                s->OnCreate();  
             }
         }
     }
@@ -62,6 +62,8 @@ namespace Lengine {
             for (ScriptableEntity* s : sc.scripts)
                 s->OnUpdate(dt);
         }
+
+
     }
 
     void ScriptSystem::OnDestroy()

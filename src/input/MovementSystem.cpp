@@ -121,42 +121,42 @@ namespace Lengine {
         MovementComponent& movement,
         RigidbodyComponent& rigidbody)
     {
-        if (rigidbody.isKinematic)
-            return;
+    //    if (rigidbody.isKinematic)
+    //        return;
 
-        // -------- Speed --------
+    //    // -------- Speed --------
 
-        float speed = movement.walkSpeed;
+    //    float speed = movement.walkSpeed;
 
-        if (movement.sprinting)
-            speed *= movement.sprintMultiplier;
+    //    if (movement.sprinting)
+    //        speed *= movement.sprintMultiplier;
 
-        // -------- Desired Velocity --------
+    //    // -------- Desired Velocity --------
 
-        glm::vec3 desiredVelocity(0.0f);
+    //    glm::vec3 desiredVelocity(0.0f);
 
-        desiredVelocity.x =
-            movement.moveInput.x * speed;
+    //    desiredVelocity.x =
+    //        movement.moveInput.x * speed;
 
-        desiredVelocity.z =
-            movement.moveInput.y * speed;
+    //    desiredVelocity.z =
+    //        movement.moveInput.y * speed;
 
-        // -------- Apply Horizontal Movement --------
-        // Arcade-style movement
+    //    // -------- Apply Horizontal Movement --------
+    //    // Arcade-style movement
 
-        rigidbody.velocity.x =
-            desiredVelocity.x;
+    //    rigidbody.velocity.x =
+    //        desiredVelocity.x;
 
-        rigidbody.velocity.z =
-            desiredVelocity.z;
+    //    rigidbody.velocity.z =
+    //        desiredVelocity.z;
 
-        // -------- Jump --------
+    //    // -------- Jump --------
 
-        if (movement.jumpRequested)
-        {
-            rigidbody.velocity.y =
-                movement.jumpForce;
-        }
+    //    if (movement.jumpRequested)
+    //    {
+    //        rigidbody.velocity.y =
+    //            movement.jumpForce;
+    //    }
 
     }  
 

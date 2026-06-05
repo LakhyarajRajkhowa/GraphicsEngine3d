@@ -4,42 +4,234 @@
 
 using namespace Lengine;
 
-Entity Scene::createEntity_root(const std::string& name)
+void Scene::Update() {
+
+    while (!entityCreateQueue.empty()) {
+
+
+        registry.createEntity();
+        registry.nameTags.Add(entityCreateQueue.front().first, NameTagComponent(entityCreateQueue.front().second));
+
+        entityCreateQueue.pop();
+    }
+
+    while (!rootEntityCreateQueue.empty()) {
+
+        registry.createEntity();
+        registry.nameTags.Add(rootEntityCreateQueue.front().first, NameTagComponent(rootEntityCreateQueue.front().second));
+        rootEntities.push_back(rootEntityCreateQueue.front().first);
+
+        rootEntityCreateQueue.pop();
+    }
+
+    while (!copyEntityQueue.empty()) {
+        copyEntity(copyEntityQueue.front().first, copyEntityQueue.front().second);
+
+        copyEntityQueue.pop();
+
+    }
+
+    while (!duplicateHierarchyQueue.empty())
+    {
+        Entity root = duplicateHierarchyQueue.front();
+
+        duplicateHierarchyImmediate(root);
+
+        duplicateHierarchyQueue.pop();
+    }
+
+    while (!destroyEntityQueue.empty())
+    {
+        removeEntityRecursiveImmediate(
+            destroyEntityQueue.front()
+        );
+
+        destroyEntityQueue.pop();
+    }
+}
+
+Entity Scene::CreateEntity_root(const std::string& name)
 {
     Entity id = nextEntityID++;
 
-    registry.CreateEntity();
-    registry.nameTags.Add(id, NameTagComponent(name));
-
-    rootEntities.push_back(id);
+    rootEntityCreateQueue.push({ id, name });
 
     return id;
 }
 
-Entity Scene::createEntity(const std::string& name)
+
+
+Entity Scene::CreateEntity(const std::string& name)
 {
+
     Entity id = nextEntityID++;
 
-    registry.CreateEntity();
-    registry.nameTags.Add(id, NameTagComponent(name));
+    entityCreateQueue.push({ id, name });
 
     return id;
 }
 
-Entity Scene::DuplicateEntityRecursive(Entity originalID, Entity newParent, Entity newRoot)
+
+Entity Scene::DuplicateHierarchy(Entity rootID)
 {
-    Entity newEntity = addEntity(nextEntityID++, originalID);
+    Entity newRoot = nextEntityID++;
+
+    duplicateHierarchyQueue.push(rootID);
+
+    return newRoot;
+}
+
+Entity Scene::copyEntityImmediate(
+    Entity entityId,
+    Entity originalEntityId)
+{
+    if (entityId == NullEntity)
+        entityId = nextEntityID++;
+
+    if (registry.transforms.Has(originalEntityId))
+    {
+        const auto& oldTrans =
+            registry.transforms.Get(originalEntityId);
+
+        registry.transforms.Add(
+            entityId,
+            TransformComponent(oldTrans)
+        );
+
+        auto& t = registry.transforms.Get(entityId);
+
+        glm::vec3 offset =
+        {
+            t.GetWorldScale().x,
+            0.0f,
+            t.GetWorldScale().z
+        };
+
+        t.localPosition += offset;
+        t.localDirty = true;
+        t.worldDirty = true;
+    }
+
+    if (registry.meshFilters.Has(originalEntityId))
+    {
+        const auto& oldMf =
+            registry.meshFilters.Get(originalEntityId);
+
+        registry.meshFilters.Add(
+            entityId,
+            MeshFilter(oldMf.meshID, entityId)
+        );
+    }
+
+    if (registry.meshRenderers.Has(originalEntityId))
+    {
+        registry.meshRenderers.Add(
+            entityId,
+            registry.meshRenderers.Get(originalEntityId)
+        );
+    }
+
+    if (registry.lights.Has(originalEntityId))
+    {
+        registry.lights.Add(
+            entityId,
+            registry.lights.Get(originalEntityId)
+        );
+    }
+
+    if (registry.nameTags.Has(originalEntityId))
+    {
+        auto& tag =
+            registry.nameTags.Get(originalEntityId);
+
+        registry.nameTags.Add(
+            entityId,
+            NameTagComponent(
+                GenerateDuplicateName(this, tag.name)
+            )
+        );
+    }
+
+    // Add rigibody only if it has trasnform
+    if (registry.transforms.Has(originalEntityId)) {
+        if (registry.rigidBodies.Has(originalEntityId)) {
+
+            registry.rigidBodies.Add(
+                entityId,
+                registry.rigidBodies.Get(originalEntityId)
+            );
+        }   
+    }
+
+    if (registry.colliders.Has(originalEntityId)) {
+
+        registry.colliders.Add(
+            entityId,
+            registry.colliders.Get(originalEntityId)
+        );
+    }
+   
+
+    if (registry.controllers.Has(originalEntityId))
+    {
+        registry.controllers.Add(
+            entityId,
+            registry.controllers.Get(originalEntityId)
+        );
+    }
+
+    if (registry.movements.Has(originalEntityId))
+    {
+        registry.movements.Add(
+            entityId,
+            registry.movements.Get(originalEntityId)
+        );
+    }
+
+    if (registry.scripts.Has(originalEntityId))
+    {
+        registry.scripts.Add(
+            entityId,
+            registry.scripts.Get(originalEntityId)
+        );
+    }
+
+    registry.GetEntities().push_back(entityId);
+    rootEntities.push_back(entityId);
+
+    return entityId;
+}
+
+Entity Scene::duplicateHierarchyImmediate(
+    Entity originalID,
+    Entity newParent,
+    Entity newRoot)
+{
+    Entity newEntity =
+        copyEntityImmediate(
+            nextEntityID++,
+            originalID
+        );
 
     if (newRoot == NullEntity)
         newRoot = newEntity;
 
     if (newParent != NullEntity)
     {
-        auto& h = registry.hierarchies.Add(newEntity);
-        h.parent = newParent;
-        registry.hierarchies.Get(newParent).children.push_back(newEntity);
+        auto& h =
+            registry.hierarchies.Add(newEntity);
 
-        std20::erase(rootEntities, newEntity);
+        h.parent = newParent;
+
+        registry.hierarchies
+            .Get(newParent)
+            .children
+            .push_back(newEntity);
+
+        std20::erase(
+            rootEntities,
+            newEntity
+        );
     }
     else
     {
@@ -48,31 +240,46 @@ Entity Scene::DuplicateEntityRecursive(Entity originalID, Entity newParent, Enti
 
     if (registry.meshFilters.Has(newEntity))
     {
-        registry.meshFilters.Get(newEntity).rootParent = newRoot;
+        registry.meshFilters
+            .Get(newEntity)
+            .rootParent = newRoot;
     }
 
     if (registry.hierarchies.Has(originalID))
     {
-        const auto& children = registry.hierarchies.Get(originalID).children;
+        const auto& children =
+            registry.hierarchies
+            .Get(originalID)
+            .children;
 
         for (Entity child : children)
         {
-            DuplicateEntityRecursive(child, newEntity, newRoot);
+            duplicateHierarchyImmediate(
+                child,
+                newEntity,
+                newRoot
+            );
         }
     }
 
     return newEntity;
 }
 
-Entity Scene::DuplicateHierarchy(Entity rootID)
-{
-    return DuplicateEntityRecursive(rootID, NullEntity, NullEntity);
-}
 
-Entity Scene::addEntity(Entity entityId, const Entity originalEntityId)
-{
+Entity Scene::CopyEntity(const Entity originalEntityId, Entity entityId) {
+
     if (entityId == NullEntity)
         entityId = nextEntityID++;
+
+    copyEntityQueue.push({ originalEntityId , entityId });
+
+    return entityId;
+
+}
+
+
+Entity Scene::copyEntity(const Entity originalEntityId, Entity entityId)
+{
 
     if (registry.transforms.Has(originalEntityId)) {
         const TransformComponent& oldTrans = registry.transforms.Get(originalEntityId);
@@ -117,6 +324,23 @@ Entity Scene::addEntity(Entity entityId, const Entity originalEntityId)
     //    registry.animations.Add(entityId, AnimationComponent(anim.animationIDs));
     //}
 
+   
+    // Add rigidbody only if it has transform 
+    if (registry.transforms.Has(originalEntityId)) {
+
+        if (registry.rigidBodies.Has(originalEntityId)) {
+
+            RigidbodyComponent& oldRigidbody = registry.rigidBodies.Get(originalEntityId);
+            registry.rigidBodies.Add(entityId, RigidbodyComponent(oldRigidbody));
+        }
+
+    }
+
+    if (registry.colliders.Has(originalEntityId)) {
+        ColliderComponent& oldCollider = registry.colliders.Get(originalEntityId);
+        registry.colliders.Add(entityId, ColliderComponent(oldCollider));
+    }
+
 
     if (registry.controllers.Has(originalEntityId)) {
         ControllerComponent& oldcontroller = registry.controllers.Get(originalEntityId);
@@ -139,6 +363,7 @@ Entity Scene::addEntity(Entity entityId, const Entity originalEntityId)
     return entityId;
 }
 
+
 Entity Scene::GetRootParent(const Entity& entityID)
 {
     Entity currentID = entityID;
@@ -156,7 +381,28 @@ Entity Scene::GetRootParent(const Entity& entityID)
     return currentID;
 }
 
-void Scene::RemoveEntity(const Entity id)
+void Scene::DestroyEntity(Entity entity)
+{
+    destroyEntityQueue.push(entity);
+}
+
+void Scene::removeEntityRecursiveImmediate(Entity id)
+{
+    if (registry.hierarchies.Has(id))
+    {
+        auto children =
+            registry.hierarchies.Get(id).children;
+
+        for (Entity child : children)
+        {
+            removeEntityRecursiveImmediate(child);
+        }
+    }
+
+    removeEntityImmediate(id);
+}
+
+void Scene::removeEntityImmediate(Entity id)
 {
     if (registry.hierarchies.Has(id))
     {
@@ -166,16 +412,26 @@ void Scene::RemoveEntity(const Entity id)
         {
             if (registry.hierarchies.Has(child))
             {
-                registry.hierarchies.Get(child).parent = NullEntity;
+                registry.hierarchies
+                    .Get(child)
+                    .parent = NullEntity;
+
                 rootEntities.push_back(child);
             }
         }
 
-        if (h.parent != NullEntity && registry.hierarchies.Has(h.parent))
+        if (h.parent != NullEntity &&
+            registry.hierarchies.Has(h.parent))
         {
-            auto& parentH = registry.hierarchies.Get(h.parent);
+            auto& parentH =
+                registry.hierarchies.Get(h.parent);
+
             parentH.children.erase(
-                std::remove(parentH.children.begin(), parentH.children.end(), id),
+                std::remove(
+                    parentH.children.begin(),
+                    parentH.children.end(),
+                    id
+                ),
                 parentH.children.end()
             );
         }
@@ -186,25 +442,47 @@ void Scene::RemoveEntity(const Entity id)
     std20::erase(rootEntities, id);
     std20::erase(registry.GetEntities(), id);
 
-    if (registry.transforms.Has(id))    registry.transforms.Remove(id);
-    if (registry.meshFilters.Has(id))   registry.meshFilters.Remove(id);
-    if (registry.meshRenderers.Has(id)) registry.meshRenderers.Remove(id);
-    if (registry.lights.Has(id))        registry.lights.Remove(id);
-    if (registry.nameTags.Has(id))      registry.nameTags.Remove(id);
-    if (registry.animations.Has(id))    registry.animations.Remove(id);
-    if (registry.cameras.Has(id))       registry.cameras.Remove(id);
+    if (registry.transforms.Has(id))
+        registry.transforms.Remove(id);
+
+    if (registry.meshFilters.Has(id))
+        registry.meshFilters.Remove(id);
+
+    if (registry.meshRenderers.Has(id))
+        registry.meshRenderers.Remove(id);
+
+    if (registry.lights.Has(id))
+        registry.lights.Remove(id);
+
+    if (registry.nameTags.Has(id))
+        registry.nameTags.Remove(id);
+
+    if (registry.animations.Has(id))
+        registry.animations.Remove(id);
+
+    if (registry.cameras.Has(id))
+        registry.cameras.Remove(id);
+
+    if (registry.controllers.Has(id))
+        registry.controllers.Remove(id);
+
+    if (registry.movements.Has(id))
+        registry.movements.Remove(id);
+
+    if (registry.scripts.Has(id))
+        registry.scripts.Remove(id);
 }
 
-void Scene::RemoveEntityRecursive(Entity id)
+void Scene::removeEntityRecursive(Entity id)
 {
     if (registry.hierarchies.Has(id))
     {
         auto children = registry.hierarchies.Get(id).children;
         for (Entity child : children)
-            RemoveEntityRecursive(child);
+            removeEntityRecursive(child);
     }
 
-    RemoveEntity(id);
+    removeEntityImmediate(id);
 }
 
 
@@ -418,6 +696,7 @@ std::unique_ptr<Scene> Scene::Clone()
     }
 
     newScene->nextEntityID = nextEntityID;
+    newScene->GetRegistry().SyncNextEntityID(nextEntityID);
 
     return newScene;
 }

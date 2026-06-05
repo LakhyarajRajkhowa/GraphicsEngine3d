@@ -11,7 +11,7 @@ namespace Lengine {
 
         std::vector<std::unique_ptr<Scene>> scenes;
 
-        Scene* activeScene = nullptr;
+        Scene* editorScene = nullptr;
         std::unique_ptr<Scene> runtimeScene = nullptr;
 
         AssetManager& assetManager;
@@ -25,13 +25,13 @@ namespace Lengine {
         Scene* GetActiveScene(EditorMode mode)
         {
             return (mode == EditorMode::EDIT)
-                ? activeScene
+                ? editorScene
                 : runtimeScene.get();
         }
 
         Scene* GetEditorScene()
         {
-            return activeScene;
+            return editorScene;
         }
 
         std::unique_ptr<Scene>& GetRuntimeScene()
@@ -41,8 +41,9 @@ namespace Lengine {
 
         void CreateRuntimeScene()
         {
-            runtimeScene = activeScene->Clone();
-            physics.InitForRuntime(*runtimeScene);
+
+            runtimeScene = editorScene->Clone();
+            
 
         }
 
@@ -50,7 +51,7 @@ namespace Lengine {
             if (!scene)
                 return;
 
-            activeScene = scene;
+            editorScene = scene;
         }
 
         const auto& getScenes() const

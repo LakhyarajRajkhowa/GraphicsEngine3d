@@ -16,7 +16,7 @@ void TransformSystem::Update(
 
     for (Entity root : rootEntities)
     {
-        UpdateWorldTransformRecursive(root, identity, true, transforms, hierarchys);
+        UpdateWorldTransformRecursive(root, identity, false, transforms, hierarchys);
     }
 
 }
@@ -35,7 +35,7 @@ void TransformSystem::UpdateWorldTransformRecursive(
 
     if (t.localDirty)
     {
-        TransformSystem::RecalculateLocalMatrix(t);
+        t.RecalculateLocalMatrix();
         t.localDirty = false;
     }
 

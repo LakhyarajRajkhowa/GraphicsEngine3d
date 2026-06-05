@@ -1,26 +1,49 @@
 #pragma once
+#include <glm/glm.hpp>
+#include <vector>
 
-#include <PxPhysicsAPI.h>
+struct ForceCommand
+{
+    enum class Type { Force, Torque };
+    glm::vec3 value;
+    Type type;
+    int mode;
+};
 
-namespace Lengine {
+struct RigidbodyComponent
+{
+    RigidbodyComponent() = default;
+    explicit RigidbodyComponent(
+        const bool useGravity,
+        const float mass = 1.0f,
+        const float linearDamping = 0.1f,
+        const float angularDamping = 0.05f,
+        const glm::vec3 linearVelocity = glm::vec3(0.0f),
+        const glm::vec3 angularVelocity = glm::vec3(0.0f)
+    ) :
+        useGravity(useGravity),
+        mass(mass),
+        linearDamping(linearDamping),
+        angularDamping(angularDamping),
+        linearVelocity(linearVelocity),
+        angularVelocity(angularVelocity)
+    {}
 
-    struct RigidbodyComponent
-    {
+    float mass = 1.0f;
+    float linearDamping = 0.1f;
+    float angularDamping = 0.05f;
 
-        float mass = 1.0f;
+    bool useGravity = true;
+    bool isKinematic = false;
 
-        bool useGravity = true;
-        bool isKinematic = false;
+    bool lockLinearX = false, lockLinearY = false, lockLinearZ = false;
+    bool lockAngularX = false, lockAngularY = false, lockAngularZ = false;
+
+    glm::vec3 linearVelocity = glm::vec3(0.0f);
+    glm::vec3 angularVelocity = glm::vec3(0.0f);
+
+    std::vector<ForceCommand> pendingForces;
 
 
-        glm::vec3 velocity{ 0.0f };
-        glm::vec3 acceleration{ 0.0f };
-
-        glm::vec3 forces{ 0.0f };
-
-        float linearDamping = 0.98f;
-
-        bool dirty = true;
-    };
-
-}
+    bool dirty = true;
+};

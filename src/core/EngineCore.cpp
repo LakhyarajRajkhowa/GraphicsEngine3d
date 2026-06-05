@@ -18,7 +18,7 @@ namespace Lengine {
         inputRouter(inputManager),
         controllerSystem(sceneManager, inputManager),
         movementSystem(sceneManager),
-        scriptSystem(sceneManager, inputManager)
+        scriptSystem(sceneManager, inputManager, physicsSystem)
 
     {
     }
@@ -39,7 +39,7 @@ namespace Lengine {
 
         renderPipeline.Init();
 
-        physicsSystem.Init();
+        physicsSystem.Init(*sceneManager.GetEditorScene());
 
         scriptSystem.Init(Paths::GameExecutableFolder +  "/GameScripts.dll");
 
@@ -50,6 +50,7 @@ namespace Lengine {
         Scene* activeScene = sceneManager.GetActiveScene(mode);
         Scene* editorScene = sceneManager.GetEditorScene();
 
+        activeScene->Update();
 
         inputManager.Update();
         inputRouter.update(deltaTime);
@@ -64,13 +65,12 @@ namespace Lengine {
     {
         Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
 
-        // !!! THIS FLOW MATTERS : controller -> movement -> physics -> scripts -> animation -> transform
+        scriptSystem.Update(deltaTime);
 
         controllerSystem.Update(deltaTime);
         movementSystem.Update(deltaTime);
-        physicsSystem.update(deltaTime, runtimeScene->GetRegistry().transforms);
-        scriptSystem.Update(deltaTime);
         animationSystem.Update(runtimeScene->GetRegistry().animations, runtimeScene->GetRegistry().skeletons, deltaTime);
+        physicsSystem.UpdateRuntime(deltaTime, runtimeScene->GetRegistry().transforms);
     }
 
 
@@ -121,11 +121,11 @@ namespace Lengine {
         updateEssentials(mode);
         pollEvents();
 
+
         if (mode == EditorMode::PLAY)
         {
             updateRuntime(mode);
 
-            // Use the RUNTIME scene for transform propagation during play
             Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
             transformSystem.Update(
                 runtimeScene->GetRegistry().transforms,
@@ -135,8 +135,9 @@ namespace Lengine {
         }
         else
         {
-            // Editor mode — use the editor scene as before
             Scene* editorScene = sceneManager.GetEditorScene();
+
+
             transformSystem.Update(
                 editorScene->GetRegistry().transforms,
                 editorScene->GetRegistry().hierarchies,
@@ -153,7 +154,7 @@ namespace Lengine {
     void EngineCore::shutdown()
     {
         assetManager.saveAssetDatabase();
-        physicsSystem.shutdown();
+        physicsSystem.Shutdown();
 
         window.quitWindow();
     }

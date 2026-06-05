@@ -1,10 +1,10 @@
-
 #pragma once
 
 #include <unordered_map>
 #include <vector>
 #include <cassert>
 #include <algorithm>
+#include <functional>
 
 #include "scene/Entity.h"
 
@@ -30,9 +30,17 @@ namespace Lengine {
     {
     public:
 
+        // ------------------------------------------------------------------
+        // Lifecycle hooks — set once by whatever system owns this storage.
+        // Called AFTER the component is live (onAdd) or BEFORE it is gone (onRemove).
+        // ------------------------------------------------------------------
+        std::function<void(Entity, T& component)> onAdd;
+        std::function<void(Entity, T& component)> onRemove;
+
         T& Add(const Entity& entityID, const T& component = T())
         {
-            // If already has it, just update in-place
+            // If already has it, just update in-place — not a structural change,
+            // so we do NOT fire onAdd again.
             if (Has(entityID))
             {
                 uint32_t idx = m_Sparse[entityID];
@@ -48,6 +56,19 @@ namespace Lengine {
             m_Dense.push_back(component);
             m_DenseEntities.push_back(entityID);
 
+            // Notify after the component is fully inserted and reachable via Has/Get
+            if (onAdd)
+                onAdd(entityID, m_Dense.back());
+
+            if constexpr (std::is_same_v<T, NameTagComponent>)
+            {
+                std::cout << "---- Registry Container Sizes (Name Tags) -----\n";
+                std::cout << "Entity : " << entityID << "\n";
+                std::cout << "Name   : " << component.name << "\n";  
+                std::cout << "m_Dense          : " << m_Dense.size() << "\n";
+                std::cout << "m_Sparse         : " << m_Sparse.size() << "\n";
+                std::cout << "m_DenseEntities  : " << m_DenseEntities.size() << "\n";
+            }
 
             return m_Dense.back();
         }
@@ -57,6 +78,10 @@ namespace Lengine {
         {
             if (!Has(entityID))
                 return;
+
+            // Notify before we actually destroy — caller can still Get() the component
+            if (onRemove)
+                onRemove(entityID, m_Dense[m_Sparse[entityID]]);
 
             uint32_t removedIdx = m_Sparse[entityID];
             uint32_t lastIdx = static_cast<uint32_t>(m_Dense.size()) - 1;
@@ -75,7 +100,6 @@ namespace Lengine {
 
             m_Sparse[entityID] = INVALID;
         }
-
 
         bool Has(const Entity& entityID) const
         {
@@ -98,11 +122,9 @@ namespace Lengine {
         std::vector<T>& GetDense() { return m_Dense; }
         const std::vector<T>& GetDense() const { return m_Dense; }
 
-        // Which entity owns dense[i]
         const std::vector<Entity>& GetEntities() const { return m_DenseEntities; }
 
-        // Size = number of components currently alive
-        size_t Size() const { return m_Dense.size(); }
+        size_t Size()  const { return m_Dense.size(); }
         bool   Empty() const { return m_Dense.empty(); }
 
         void Clear()
@@ -110,15 +132,14 @@ namespace Lengine {
             m_Dense.clear();
             m_DenseEntities.clear();
             m_Sparse.clear();
+            // Intentionally leave onAdd/onRemove intact — they are set once at
+            // system init and should survive a scene clear/reload.
         }
-
-
 
         void CloneFrom(
             const ComponentStorage<T>& src,
             const std::unordered_map<Entity, Entity>& entityMap)
         {
-            
             Clear();
             for (size_t i = 0; i < src.m_Dense.size(); ++i)
             {
@@ -133,10 +154,8 @@ namespace Lengine {
     private:
         static constexpr uint32_t INVALID = std::numeric_limits<uint32_t>::max();
 
-        std::vector<T>      m_Dense;          // component data, tightly packed
-        std::vector<Entity> m_DenseEntities;  // entity[i] owns Dense[i]
-
-        // m_Sparse[entityID] = index into m_Dense
+        std::vector<T>        m_Dense;
+        std::vector<Entity>   m_DenseEntities;
         std::vector<uint32_t> m_Sparse;
     };
 

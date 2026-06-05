@@ -12,7 +12,7 @@ void SceneManager::loadScenes(
             Paths::GameScenes + sceneName + ".json"
         );
 
-        if (!activeScene)
+        if (!editorScene)
             setActiveScene(scene.get());
 
         scenes.push_back(std::move(scene));

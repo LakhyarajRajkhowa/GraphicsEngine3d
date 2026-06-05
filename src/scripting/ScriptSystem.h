@@ -4,12 +4,13 @@
 #include "scene/SceneManager.h"
 #include "input/InputManager.h"
 
+
 namespace Lengine {
 
     class ScriptSystem
     {
     public:
-        ScriptSystem(SceneManager& scn, InputManager& input) : sceneManager(scn), input(input) {}
+        ScriptSystem(SceneManager& scn, InputManager& input, PhysicsSystem& physics) : sceneManager(scn), input(input) , physics(physics){}
 
         void Init(const std::string& dllPath);
 
@@ -30,8 +31,11 @@ namespace Lengine {
         bool IsLibraryLoaded() const { return library.IsLoaded(); }
 
     private:
+
+        float startTime = 0.0f;
         SceneManager& sceneManager;
         InputManager& input;
+        PhysicsSystem& physics;
 
         ScriptLibrary library;
         std::unordered_map<Entity, std::vector<ScriptableEntity*>> ownedScripts;
