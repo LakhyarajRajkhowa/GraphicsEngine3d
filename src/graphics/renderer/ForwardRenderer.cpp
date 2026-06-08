@@ -257,10 +257,12 @@ void ForwardRenderer::CollectAndSort(const RenderContext& ctx)
         const MeshRenderer& mr = mrDense[i];
         const Entity        entity = mrEntities[i];
 
+
         if (!mr.render)                                         continue;
         if (mr.inst.baseMaterial.isNull())                      continue;
         if (!registry.HasComponent<TransformComponent>(entity)) continue;
         if (!registry.HasComponent<MeshFilter>(entity))         continue;
+
 
         const TransformComponent& t = registry.GetComponent<TransformComponent>(entity);
         const MeshFilter& mf = registry.GetComponent<MeshFilter>(entity);
@@ -271,6 +273,8 @@ void ForwardRenderer::CollectAndSort(const RenderContext& ctx)
 
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
         if (!mat) continue;
+
+
 
         RenderItem item;
         item.mesh = mesh;
@@ -283,8 +287,7 @@ void ForwardRenderer::CollectAndSort(const RenderContext& ctx)
             const AnimationComponent& anim =
                 registry.GetComponent<AnimationComponent>(mf.rootParent);
 
-            if (anim.currentAnimationID != UUID::Null
-                && !anim.finalBoneMatrices.empty()
+            if (!anim.finalBoneMatrices.empty()
                 && !mesh->bonePalette.empty())
             {
                 item.hasSkeleton = true;

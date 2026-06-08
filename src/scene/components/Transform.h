@@ -84,34 +84,29 @@ namespace Lengine {
         void SetPosition(const glm::vec3& pos)
         {
             localPosition = pos;
-            RecalculateLocalMatrix();
-            worldMatrix = localMatrix;
-
-
+            localDirty = true;
+            worldDirty = true;
         }
 
         void Translate(const glm::vec3& delta)
         {
             localPosition += delta;
-            RecalculateLocalMatrix();
-            worldMatrix = localMatrix;
-
+            localDirty = true;
+            worldDirty = true;
         }
 
         void SetRotation(const glm::quat& rot)
         {
             localRotation = rot;
-            RecalculateLocalMatrix();
-            worldMatrix = localMatrix;
-
+            localDirty = true;
+            worldDirty = true;
         }
 
         void SetScale(const glm::vec3& scale)
         {
             localScale = scale;
-            RecalculateLocalMatrix();
-            worldMatrix = localMatrix;
-
+            localDirty = true;
+            worldDirty = true;
         }
 
          void RecalculateLocalMatrix()

@@ -175,6 +175,8 @@ namespace Lengine {
             shader->setBool("useSkeleton", true);
             for (int i = 0; i < (int)bones.size(); ++i)
                 shader->setMat4("finalBonesMatrices[" + std::to_string(i) + "]", bones[i]);
+
+
         }
     };
 

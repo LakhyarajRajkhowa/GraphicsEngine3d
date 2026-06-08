@@ -70,6 +70,7 @@ namespace Lengine {
         controllerSystem.Update(deltaTime);
         movementSystem.Update(deltaTime);
         animationSystem.Update(runtimeScene->GetRegistry().animations, runtimeScene->GetRegistry().skeletons, deltaTime);
+
         physicsSystem.UpdateRuntime(deltaTime, runtimeScene->GetRegistry().transforms);
     }
 
@@ -143,6 +144,8 @@ namespace Lengine {
                 editorScene->GetRegistry().hierarchies,
                 editorScene->GetRootEntities()
             );
+
+
         }
     }
 

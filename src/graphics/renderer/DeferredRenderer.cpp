@@ -173,8 +173,7 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
             const AnimationComponent& anim =
                 registry.GetComponent<AnimationComponent>(mf.rootParent);
 
-            if (anim.currentAnimationID != UUID::Null
-                && !anim.finalBoneMatrices.empty()
+            if (!anim.finalBoneMatrices.empty()
                 && !mesh->bonePalette.empty())
             {
                 item.hasSkeleton = true;

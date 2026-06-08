@@ -6,9 +6,6 @@ using namespace Lengine;
 bool PhysicsSystem::dirty = true;
 
 
-// =============================================================================
-//  Lifecycle
-// =============================================================================
 
 void PhysicsSystem::Init(Scene& scene)
 {
@@ -39,9 +36,13 @@ void PhysicsSystem::Init(Scene& scene)
     InitForScene(scene);
 }
 
+// - clear previous scene's actors
+// - build actors for colliders and rgbody components
+// - sync engine's transform component to PhysX scene
+// - onAdd & onRemove definition for colliders and rgbodies
 void PhysicsSystem::InitForScene(Scene& scene)
 {
-    ClearScene();
+    clearScene();
 
     registry = &scene.GetRegistry();
 
@@ -55,7 +56,7 @@ void PhysicsSystem::InitForScene(Scene& scene)
     for (size_t i = 0; i < rbDense.size(); ++i)
         buildRigidbodyActor(rbEntities[i], rbDense[i]);
 
-    SyncTransformsToPhysX(registry->transforms);
+    syncTransformsToPhysX(registry->transforms);
 
     registry->colliders.onAdd = [this](Entity e, ColliderComponent&)
         {
@@ -82,7 +83,7 @@ void PhysicsSystem::InitForScene(Scene& scene)
         };
 }
 
-void PhysicsSystem::ClearScene()
+void PhysicsSystem::clearScene()
 {
     for (auto& [entity, actor] : actors)
         if (actor->actor) physxScene->removeActor(*actor->actor);
@@ -103,10 +104,10 @@ void PhysicsSystem::Shutdown()
 }
 
 
-// =============================================================================
-//  Update
-// =============================================================================
 
+// - physics actors creation and destruction queues process and cleared
+// - actual simulation of physics through the PhysX
+// - sync PhysX transforms to engine's transform components 
 void PhysicsSystem::UpdateRuntime(float dt, ComponentStorage<TransformComponent>& transforms)
 {
     flushPending();
@@ -116,9 +117,6 @@ void PhysicsSystem::UpdateRuntime(float dt, ComponentStorage<TransformComponent>
 }
 
 
-// =============================================================================
-//  FlushPending
-// =============================================================================
 
 void PhysicsSystem::flushPending()
 {
@@ -153,9 +151,6 @@ void PhysicsSystem::flushPending()
 }
 
 
-// =============================================================================
-//  Actor construction
-// =============================================================================
 
 void PhysicsSystem::buildColliderActor(Entity entity, ColliderComponent& collider)
 {
@@ -294,9 +289,6 @@ void PhysicsSystem::buildRigidbodyActor(Entity entity, RigidbodyComponent& rb)
 }
 
 
-// =============================================================================
-//  Actor teardown
-// =============================================================================
 
 void PhysicsSystem::teardownCollider(Entity entity, ColliderComponent& collider)
 {
@@ -361,11 +353,9 @@ void PhysicsSystem::teardownRigidbody(Entity entity, ColliderComponent* collider
 }
 
 
-// =============================================================================
-//  Transform sync
-// =============================================================================
 
-void PhysicsSystem::SyncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms)
+// - sync game-side transforms into PhysX 
+void PhysicsSystem::syncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms)
 {
     for (auto& [entity, pa] : actors)
     {
@@ -378,6 +368,7 @@ void PhysicsSystem::SyncTransformsToPhysX(ComponentStorage<TransformComponent>& 
     }
 }
 
+// - write PhysX poses back to ECS transforms each frame
 void PhysicsSystem::updateTransforms(ComponentStorage<TransformComponent>& transforms)
 {
     for (auto& [entity, pa] : actors)
@@ -403,9 +394,6 @@ void PhysicsSystem::updateTransforms(ComponentStorage<TransformComponent>& trans
 }
 
 
-// =============================================================================
-//  Misc private helpers
-// =============================================================================
 
 void PhysicsSystem::createGroundPlane()
 {
@@ -433,7 +421,7 @@ PxForceMode::Enum PhysicsSystem::toPxForceMode(ForceMode mode)
     }
 }
 
-// Pushes all structural fields from rb into an already-created PxRigidDynamic
+// - pushes all structural fields from rb into an already-created PxRigidDynamic
 void PhysicsSystem::syncRigidbodyProperties(PxRigidDynamic* actor, const RigidbodyComponent& rb)
 {
     if (actor->getNbShapes() > 0)
@@ -484,10 +472,8 @@ void PhysicsSystem::drainPendingCommands(Entity e, PxRigidDynamic* dyn, Rigidbod
     rb.pendingForces.clear();
 }
 
-// =============================================================================
-//  Collider API
-// =============================================================================
 
+// - build or update actors's PxShape
 void PhysicsSystem::AddCollider(Entity entity, ColliderComponent& col, ColliderShape::Type type)
 {
     ColliderShape shape;
@@ -496,6 +482,7 @@ void PhysicsSystem::AddCollider(Entity entity, ColliderComponent& col, ColliderS
     buildColliderActor(entity, col);
 }
 
+// - detach PxShape from the actor
 void PhysicsSystem::DeleteColliderShape(Entity entity, ColliderComponent& col, size_t shapeIndex)
 {
     if (shapeIndex >= col.shapes.size()) return;
@@ -514,21 +501,23 @@ void PhysicsSystem::DeleteColliderShape(Entity entity, ColliderComponent& col, s
     col.shapes.erase(col.shapes.begin() + shapeIndex);
 }
 
+// - delete all PxShapes attached to the actor
+// - delete the actor if it is of type STATIC
 void PhysicsSystem::DeleteCollider(Entity entity, ColliderComponent& col)
 {
     teardownCollider(entity, col);
 }
 
+// - delete the actor if no collider
+// - demotes actor type from DYNAMIC to STATIC if collider present
 void PhysicsSystem::DeleteRigidBody(Entity entity, ColliderComponent* col)
 {
     teardownRigidbody(entity, col);
 }
 
 
-// =============================================================================
-//  Rigidbody structural setters
-// =============================================================================
-
+// - set mass only for dynamic actor
+// - uses  PxRigidBodyExt::setMassAndUpdateInertia
 void PhysicsSystem::SetMass(Entity e, float mass)
 {
     if (!registry->rigidBodies.Has(e)) return;
@@ -544,6 +533,8 @@ void PhysicsSystem::SetMass(Entity e, float mass)
         dyn->setMass(mass);
 }
 
+// - set gravity only for dynamic actor
+// - uses setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !enabled)
 void PhysicsSystem::SetGravityEnabled(Entity e, bool enabled)
 {
     if (!registry->rigidBodies.Has(e)) return;
@@ -555,6 +546,10 @@ void PhysicsSystem::SetGravityEnabled(Entity e, bool enabled)
     if (dyn) dyn->setActorFlag(PxActorFlag::eDISABLE_GRAVITY, !enabled);
 }
 
+// - set kinematics only for dynamic actor
+// - set Linear velocity to PxVec3(0.f)
+// - set Angular velocity to PxVec3(0.f)
+// - setRigidBodyFlag(PxRigidBodyFlag::eKINEMATIC, kinematic)
 void PhysicsSystem::SetKinematic(Entity e, bool kinematic)
 {
     if (!registry->rigidBodies.Has(e)) return;
@@ -577,6 +572,9 @@ void PhysicsSystem::SetKinematic(Entity e, bool kinematic)
         it->second->type = kinematic ? PhysicsActor::Type::KINEMATIC : PhysicsActor::Type::DYNAMIC;
 }
 
+
+// - set linear damping only for dynamic actor
+// - uses  setLinearDamping(damping)
 void PhysicsSystem::SetLinearDamping(Entity e, float damping)
 {
     if (!registry->rigidBodies.Has(e)) return;
@@ -588,6 +586,8 @@ void PhysicsSystem::SetLinearDamping(Entity e, float damping)
     if (dyn) dyn->setLinearDamping(damping);
 }
 
+// - set angular damping only for dynamic actor
+// - uses  setAngularDamping(damping)
 void PhysicsSystem::SetAngularDamping(Entity e, float damping)
 {
     if (!registry->rigidBodies.Has(e)) return;
@@ -627,10 +627,6 @@ void PhysicsSystem::SetAngularLock(Entity e, bool x, bool y, bool z)
     dyn->setRigidDynamicLockFlag(PxRigidDynamicLockFlag::eLOCK_ANGULAR_Z, z);
 }
 
-
-// =============================================================================
-//  Velocity API
-// =============================================================================
 
 void PhysicsSystem::SetLinearVelocity(Entity e, glm::vec3 v)
 {
@@ -674,6 +670,26 @@ glm::vec3 PhysicsSystem::GetAngularVelocity(Entity e) const
     return { v.x, v.y, v.z };
 }
 
+
+// KINEMATIC BODY
+
+void PhysicsSystem::MoveKinematic(Entity e,
+    const glm::vec3& pos,
+    const glm::quat& rot)
+{
+    PxRigidDynamic* dyn = getDynamicActor(e);
+
+    if (!dyn) return;
+    if (!dyn->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC))
+        return;
+
+    dyn->setKinematicTarget(
+        PxTransform(
+            PxVec3(pos.x, pos.y, pos.z),
+            PxQuat(rot.x, rot.y, rot.z, rot.w)
+        )
+    );
+}
 
 // =============================================================================
 //  Force API

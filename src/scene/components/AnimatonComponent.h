@@ -1,36 +1,37 @@
 #pragma once
 
-namespace Lengine {
+#include "animations/AnimatorController.h"
+
+namespace Lengine
+{
+
     struct AnimationComponent
     {
         std::vector<UUID> animationIDs;
+        std::unordered_map<UUID, std::string> animationNames;
+        std::unordered_map<std::string, UUID> animationNameToID;
 
-        UUID currentAnimationID = UUID::Null;
-
-        float currentTime = 0.0f;
-        float playbackSpeed = 1.0f;
-
-        bool looping = true;
+        AnimatorController animator;
 
         std::vector<glm::mat4> finalBoneMatrices;
 
-        AnimationComponent()
-            : currentAnimationID(UUID::Null),
-            currentTime(0.0f),
-            playbackSpeed(1.0f),
-            looping(true)
-        {
-        }
+        AnimationComponent() = default;
 
         AnimationComponent(const std::vector<UUID>& animations)
-            : animationIDs(animations),
-            currentAnimationID(animations.empty() ? UUID::Null : animations[0]),
-            currentTime(0.0f),
-            playbackSpeed(1.0f),
-            looping(true)
-        {
-        }
+            : animationIDs(animations)
+        {}
     };
 
-  
+    inline UUID GetAnimationIDByName(
+        const AnimationComponent& animComp,
+        const std::string& name)
+    {
+        auto it = animComp.animationNameToID.find(name);
+
+        if (it != animComp.animationNameToID.end())
+            return it->second;
+
+        return UUID::Null;
+    }
+
 }

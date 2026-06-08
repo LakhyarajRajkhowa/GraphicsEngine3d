@@ -60,6 +60,8 @@ namespace Lengine {
         std::vector<int> boneTrackMap;
 
 
+
+
     };
 
     static std::shared_ptr<Animation> ReadAnimation(const std::filesystem::path& path)

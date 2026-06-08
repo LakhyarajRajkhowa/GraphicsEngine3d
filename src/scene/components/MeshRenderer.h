@@ -5,6 +5,8 @@
 namespace Lengine {
     class MeshRenderer {
     public:
+        MeshRenderer() = default;
+        explicit MeshRenderer(const MaterialInstance mInst) : inst(mInst) {}
 
         MaterialInstance inst;
 

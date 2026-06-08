@@ -111,6 +111,8 @@ namespace Lengine {
     };
 
     struct MaterialInstance {
+        MaterialInstance() = default;
+        explicit MaterialInstance(UUID baseMaterialID) : baseMaterial(baseMaterialID), dirty(true) {}
         UUID baseMaterial = UUID::Null;
         bool dirty = true;
         ResolvedMaterial cached;

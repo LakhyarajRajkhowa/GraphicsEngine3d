@@ -1,8 +1,9 @@
 #pragma once
 
 #include "scene/components/ComponentStorage.h"
-
 #include "resources/AssetManager.h"
+#include "animations/Pose.h"
+#include "animations/AnimatorController.h"
 
 namespace Lengine
 {
@@ -18,31 +19,29 @@ namespace Lengine
             float dt
         );
 
+        Pose SamplePose(Animation& animation, float time, size_t boneCount);
+
+        void PoseToMatrices(
+            Skeleton& skeleton,
+            const Pose& pose,
+            std::vector<glm::mat4>& boneMatrices
+        );
+
     private:
         AssetManager& assetManager;
 
-        void ApplyAnimation(
-            ComponentStorage<SkeletonComponent>& skeletons,
-            Entity entity,
-            AnimationComponent& anim,
-            float time
-        );
+        Pose EvaluateNode(BlendNode& node, size_t boneCount, float dt);
 
-        void ComputeBoneTransforms(
-            Skeleton& skeleton,
-            Animation& animation,
-            float time,
-            std::vector<glm::mat4>& boneMatrices
-        );
+        Pose EvaluateClip(BlendNode& node, size_t boneCount, float dt);
+        Pose EvaluateBlend1D(BlendNode& node, size_t boneCount, float dt,
+            const std::unordered_map<std::string, float>& floatParams);
 
         glm::vec3 InterpolatePosition(AnimationTrack& track, float time, int delta);
         glm::quat InterpolateRotation(AnimationTrack& track, float time, int delta);
         glm::vec3 InterpolateScale(AnimationTrack& track, float time, int delta);
 
-
-
-
-
+        // stored per-Update so EvaluateNode can read parameters without threading them through
+        const std::unordered_map<std::string, float>* currentFloatParams = nullptr;
     };
 
 }

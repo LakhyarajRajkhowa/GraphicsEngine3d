@@ -47,13 +47,8 @@ namespace Lengine {
         void Init(Scene& scene);
         void InitForScene(Scene& scene);
         void UpdateRuntime(float dt, ComponentStorage<TransformComponent>& transforms);
-        void ClearScene();
         void Shutdown();
 
-        // Sync game-side transforms into PhysX 
-        void SyncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms);
-
-        // Accessors
         PxPhysics* GetPhysics() { return physics; }
         PxScene* GetScene() { return physxScene; }
         PxMaterial* GetDefaultMaterial() { return material; }
@@ -61,18 +56,12 @@ namespace Lengine {
         std::unordered_map<Entity, std::unique_ptr<PhysicsActor>>& GetActors() { return actors; }
         const std::unordered_map<Entity, std::unique_ptr<PhysicsActor>>& GetActors() const { return actors; }
 
-        // =====================================================================
-        //  Collider API
-        // =====================================================================
+
         void AddCollider(Entity entity, ColliderComponent& col, ColliderShape::Type type);
         void DeleteColliderShape(Entity entity, ColliderComponent& col, size_t shapeIndex);
         void DeleteCollider(Entity entity, ColliderComponent& col);
         void DeleteRigidBody(Entity entity, ColliderComponent* col);
 
-        // =====================================================================
-        //  Rigidbody — structural setters
-        //  Safe at any time: update component + push to PhysX if actor exists
-        // =====================================================================
         void SetMass(Entity e, float mass);
         void SetGravityEnabled(Entity e, bool enabled);
         void SetKinematic(Entity e, bool kinematic);
@@ -81,35 +70,22 @@ namespace Lengine {
         void SetLinearLock(Entity e, bool x, bool y, bool z);
         void SetAngularLock(Entity e, bool x, bool y, bool z);
 
-        // =====================================================================
-        //  Rigidbody — velocity
-        //  Direct read/write; no-op / zero-return if entity has no dynamic actor
-        // =====================================================================
         void      SetLinearVelocity(Entity e, glm::vec3 velocity);
         void      SetAngularVelocity(Entity e, glm::vec3 velocity);
         glm::vec3 GetLinearVelocity(Entity e) const;
         glm::vec3 GetAngularVelocity(Entity e) const;
 
-        // =====================================================================
-        //  Rigidbody — forces
-        //  Applied immediately; no-op if entity has no dynamic actor yet
-        // =====================================================================
+        void MoveKinematic(Entity e, const glm::vec3& pos, const glm::quat& rot);
+
         void AddForce(Entity e, glm::vec3 force, ForceMode mode = ForceMode::Force);
         void AddTorque(Entity e, glm::vec3 torque, ForceMode mode = ForceMode::Force);
         void ClearForces(Entity e);
 
-        // =====================================================================
-        //  Rigidbody — sleep
-        // =====================================================================
         void WakeUp(Entity e);
         void PutToSleep(Entity e);
         bool IsSleeping(Entity e) const;
 
 
-
-        // =========================================================================
-        //  Private data
-        // =========================================================================
     private:
 
         PxFoundation* foundation = nullptr;
@@ -130,17 +106,15 @@ namespace Lengine {
 
         static constexpr float fixedDeltaTime = 1.0f / 120.0f;
 
-        // =========================================================================
-        //  Private methods
-        // =========================================================================
     private:
 
         PxRigidDynamic* getDynamicActor(Entity e) const;
 
-        // Deferred component add/remove processing
         void flushPending();
+        void syncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms);
+        void updateTransforms(ComponentStorage<TransformComponent>& transforms);
 
-        // Actor construction / destruction
+
         void buildColliderActor(Entity entity, ColliderComponent& col);
         void buildRigidbodyActor(Entity entity, RigidbodyComponent& rb);
         void teardownCollider(Entity entity, ColliderComponent& col);
@@ -149,22 +123,20 @@ namespace Lengine {
         void drainPendingCommands(Entity e, PxRigidDynamic* dyn, RigidbodyComponent& rb);
        
 
-        // Pushes ALL structural RigidbodyComponent fields into an existing PxRigidDynamic
         void syncRigidbodyProperties(PxRigidDynamic* actor, const RigidbodyComponent& rb);
 
-        // Write PhysX poses back to ECS transforms each frame
-        void updateTransforms(ComponentStorage<TransformComponent>& transforms);
 
         void createGroundPlane();
 
-        // Returns the PxRigidDynamic for entity, or nullptr if static / absent
+        void clearScene();
 
-        // Maps our ForceMode to PxForceMode
+
+
         static PxForceMode::Enum toPxForceMode(ForceMode mode);
     };
 
 
-    // Utility: convert PhysX transform to GLM mat4
+    // convert PhysX transform to GLM mat4
     inline glm::mat4 PxToGLM(const physx::PxTransform& t)
     {
         physx::PxMat44 m(t);

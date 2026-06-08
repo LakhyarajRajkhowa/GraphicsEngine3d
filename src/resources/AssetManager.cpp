@@ -436,67 +436,45 @@ Entity AssetManager::InstantiatePrefab(
         t.localDirty = true;
         t.worldDirty = true;
 
-
         if (node.meshID != UUID::Null)
         {
-            // Submesh
-            if (!registry.meshFilters.Has(e)) {
-                auto& mf = registry.meshFilters.Add(e);
-                RequestSubmeshLoad(node.meshID, e);
-            }
-            else {
-                RequestSubmeshLoad(node.meshID, e);
-            }
+            if (!registry.meshFilters.Has(e))
+                registry.meshFilters.Add(e);
 
-            // Material
-            if (node.materialID != UUID::Null)
+            RequestSubmeshLoad(node.meshID, e);
+
+            UUID matID = node.materialID != UUID::Null
+                ? node.materialID
+                : MaterialID::DefaultPbr;
+
+            auto& mr = registry.meshRenderers.Has(e)
+                ? registry.meshRenderers.Get(e)
+                : registry.meshRenderers.Add(e);
+
+            if (node.materialID != UUID::Null && LoadMaterial(node.materialID))
             {
-                if (!registry.meshRenderers.Has(e)) {
-                    auto& mr = registry.meshRenderers.Add(e);
-
-                    if (LoadMaterial(node.materialID)) {
-                        mr.inst.baseMaterial = node.materialID;
-                        mr.inst.dirty = true;
-                    }
-                }
-                else {
-                    auto& mr = registry.meshRenderers.Get(e);
-
-                    if (LoadMaterial(node.materialID)) {
-                        mr.inst.baseMaterial = node.materialID;
-                        mr.inst.dirty = true;
-                    }
-                }
+                mr.inst.baseMaterial = node.materialID;
+                mr.inst.dirty = true;
             }
-            else {
-                if (!registry.meshRenderers.Has(e)) {
-                    auto& mr = registry.meshRenderers.Add(e);
-                    mr.inst.baseMaterial = MaterialID::DefaultPbr;
-                }
-                else {
-                    auto& mr = registry.meshRenderers.Get(e);
-                    mr.inst.baseMaterial = MaterialID::DefaultPbr;
-                }
+            else
+            {
+                mr.inst.baseMaterial = MaterialID::DefaultPbr;
             }
         }
     }
 
+    // ---- Hierarchy ----
     for (const auto& node : prefab.nodes)
     {
         if (node.parentIndex != -1)
-        {
-            scene.SetParent(
-                entities[node.index],
-                entities[node.parentIndex]
-            );
-        }
+            scene.SetParent(entities[node.index], entities[node.parentIndex]);
     }
 
-    for (auto& e : entities) {
-        if (registry.meshFilters.Has(e)) {
-            auto& m = registry.meshFilters.Get(e);
-            m.rootParent = entities[0];
-        }
+    // ---- Root parent on mesh filters ----
+    for (auto& e : entities)
+    {
+        if (registry.meshFilters.Has(e))
+            registry.meshFilters.Get(e).rootParent = entities[0];
     }
 
     // -------- SKELETON (root) --------
@@ -505,14 +483,10 @@ Entity AssetManager::InstantiatePrefab(
         if (!registry.skeletons.Has(entities[0]))
         {
             auto& sk = registry.skeletons.Add(entities[0]);
-
             sk.skeletonID = prefab.skeletonID;
 
-            if (!GetSkeleton(sk.skeletonID)) {
-                if (!LoadSkeleton(sk.skeletonID)) {
-                    sk.skeletonID = UUID::Null;
-                }
-            }
+            if (!GetSkeleton(sk.skeletonID) && !LoadSkeleton(sk.skeletonID))
+                sk.skeletonID = UUID::Null;
         }
     }
 
@@ -522,24 +496,73 @@ Entity AssetManager::InstantiatePrefab(
         if (!registry.animations.Has(entities[0]))
         {
             auto& anim = registry.animations.Add(entities[0]);
-
             anim.animationIDs = prefab.animationIDs;
 
-            for (auto& animID : anim.animationIDs) {
-                if (!GetAnimation(animID)) {
-                    LoadAnimation(animID);
+            for (auto& animID : anim.animationIDs)
+            {
+                bool loaded = true;
+
+                if (!GetAnimation(animID))
+                    loaded = LoadAnimation(animID);
+
+                if (loaded)
+                {
+                    Animation* clip = GetAnimation(animID);
+
+                    if (clip)
+                    {
+                        anim.animationNames[animID] = clip->name;
+                        anim.animationNameToID[clip->name] = animID;
+                    }
                 }
             }
 
-            UUID firstAnimID = prefab.animationIDs[0];
-            if (GetAnimation(firstAnimID))
+            // ---- bind pose init ----
+            if (registry.skeletons.Has(entities[0]))
             {
-                anim.currentAnimationID = firstAnimID;
-            }
+                const UUID& skelID = registry.skeletons.Get(entities[0]).skeletonID;
+                Skeleton* skeleton = GetSkeleton(skelID);
 
-            anim.currentTime = 0.0f;
-            anim.playbackSpeed = 1.0f;
-            anim.looping = true;
+                if (skeleton && !prefab.animationIDs.empty())
+                {
+                    Animation* restClip = GetAnimation(prefab.animationIDs[0]);
+
+                    if (restClip)
+                    {
+                        anim.finalBoneMatrices.resize(skeleton->bones.size(), glm::mat4(1.0f));
+
+                        std::vector<glm::mat4> globalTransforms(skeleton->bones.size());
+
+                        for (size_t i = 0; i < skeleton->bones.size(); i++)
+                        {
+                            int       trackIndex = restClip->boneTrackMap[i];
+                            glm::mat4 localTransform(1.0f);
+
+                            if (trackIndex != -1)
+                            {
+                                auto& track = restClip->tracks[trackIndex];
+
+                                glm::vec3 pos = track.positions.empty() ? glm::vec3(0.0f) : track.positions[0].position;
+                                glm::quat rot = track.rotations.empty() ? glm::quat(1, 0, 0, 0) : track.rotations[0].rotation;
+                                glm::vec3 scale = track.scales.empty() ? glm::vec3(1.0f) : track.scales[0].scale;
+
+                                localTransform = glm::translate(glm::mat4(1.0f), pos)
+                                    * glm::mat4_cast(rot)
+                                    * glm::scale(glm::mat4(1.0f), scale);
+                            }
+
+                            int parent = skeleton->bones[i].parentIndex;
+
+                            globalTransforms[i] = (parent == -1)
+                                ? localTransform
+                                : globalTransforms[parent] * localTransform;
+
+                            anim.finalBoneMatrices[i] = globalTransforms[i]
+                                * skeleton->bones[i].inverseBindMatrix;
+                        }
+                    }
+                }
+            }
         }
     }
 
@@ -1010,39 +1033,39 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jEntity["skeleton"] = jSkeleton;
         }
 
-        if (registry.animations.Has(entityID))
-        {
-            const AnimationComponent& a = registry.animations.Get(entityID);
+        //if (registry.animations.Has(entityID))
+        //{
+        //    const AnimationComponent& a = registry.animations.Get(entityID);
 
-            json jAnim;
+        //    json jAnim;
 
-            json animIDs = json::array();
-            for (const auto& id : a.animationIDs)
-                animIDs.push_back(id.toUint64());
+        //    json animIDs = json::array();
+        //    for (const auto& id : a.animationIDs)
+        //        animIDs.push_back(id.toUint64());
 
-            jAnim["animationIDs"] = animIDs;
-            jAnim["currentAnimationID"] = a.currentAnimationID.toUint64();
-            jAnim["currentTime"] = a.currentTime;
-            jAnim["playbackSpeed"] = a.playbackSpeed;
-            jAnim["looping"] = a.looping;
+        //    jAnim["animationIDs"] = animIDs;
+        //    jAnim["currentAnimationID"] = a.currentAnimationID.toUint64();
+        //    jAnim["currentTime"] = a.currentTime;
+        //    jAnim["playbackSpeed"] = a.playbackSpeed;
+        //    jAnim["looping"] = a.looping;
 
-            auto SaveMat4Array = [](const std::vector<glm::mat4>& mats) {
-                json arr = json::array();
+        //    auto SaveMat4Array = [](const std::vector<glm::mat4>& mats) {
+        //        json arr = json::array();
 
-                for (const auto& m : mats) {
-                    json mat = json::array();
-                    for (int i = 0; i < 4; i++)
-                        for (int j = 0; j < 4; j++)
-                            mat.push_back(m[i][j]);
+        //        for (const auto& m : mats) {
+        //            json mat = json::array();
+        //            for (int i = 0; i < 4; i++)
+        //                for (int j = 0; j < 4; j++)
+        //                    mat.push_back(m[i][j]);
 
-                    arr.push_back(mat);
-                }
-                return arr;
-                };
+        //            arr.push_back(mat);
+        //        }
+        //        return arr;
+        //        };
 
-            jAnim["finalBoneMatrices"] = SaveMat4Array(a.finalBoneMatrices);
-            jEntity["animation"] = jAnim;
-        }
+        //    jAnim["finalBoneMatrices"] = SaveMat4Array(a.finalBoneMatrices);
+        //    jEntity["animation"] = jAnim;
+        //}
 
         if (registry.hierarchies.Has(entityID))
         {
@@ -1344,43 +1367,43 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.skeletons.Add(entityID, s);
                 }
 
-                if (jEntity.contains("animation"))
-                {
-                    const auto& ja = jEntity.at("animation");
+                //if (jEntity.contains("animation"))
+                //{
+                //    const auto& ja = jEntity.at("animation");
 
-                    AnimationComponent a;
+                //    AnimationComponent a;
 
-                    if (ja.contains("animationIDs"))
-                    {
-                        for (const auto& idStr : ja.at("animationIDs"))
-                            a.animationIDs.push_back(UUID(idStr.get<uint64_t>()));
-                    }
+                //    if (ja.contains("animationIDs"))
+                //    {
+                //        for (const auto& idStr : ja.at("animationIDs"))
+                //            a.animationIDs.push_back(UUID(idStr.get<uint64_t>()));
+                //    }
 
-                    if (ja.contains("currentAnimationID"))
-                        a.currentAnimationID = UUID(ja.at("currentAnimationID").get<uint64_t>());
+                //    if (ja.contains("currentAnimationID"))
+                //        a.currentAnimationID = UUID(ja.at("currentAnimationID").get<uint64_t>());
 
-                    if (ja.contains("currentTime"))    a.currentTime = ja.at("currentTime");
-                    if (ja.contains("playbackSpeed"))  a.playbackSpeed = ja.at("playbackSpeed");
-                    if (ja.contains("looping"))        a.looping = ja.at("looping");
+                //    if (ja.contains("currentTime"))    a.currentTime = ja.at("currentTime");
+                //    if (ja.contains("playbackSpeed"))  a.playbackSpeed = ja.at("playbackSpeed");
+                //    if (ja.contains("looping"))        a.looping = ja.at("looping");
 
-                    auto LoadMat4Array = [](const json& arr) {
-                        std::vector<glm::mat4> mats;
-                        for (const auto& matJson : arr) {
-                            glm::mat4 m(1.0f);
-                            int index = 0;
-                            for (int i = 0; i < 4; i++)
-                                for (int j = 0; j < 4; j++)
-                                    m[i][j] = matJson[index++];
-                            mats.push_back(m);
-                        }
-                        return mats;
-                        };
+                //    auto LoadMat4Array = [](const json& arr) {
+                //        std::vector<glm::mat4> mats;
+                //        for (const auto& matJson : arr) {
+                //            glm::mat4 m(1.0f);
+                //            int index = 0;
+                //            for (int i = 0; i < 4; i++)
+                //                for (int j = 0; j < 4; j++)
+                //                    m[i][j] = matJson[index++];
+                //            mats.push_back(m);
+                //        }
+                //        return mats;
+                //        };
 
-                    if (ja.contains("finalBoneMatrices"))
-                        a.finalBoneMatrices = LoadMat4Array(ja.at("finalBoneMatrices"));
+                //    if (ja.contains("finalBoneMatrices"))
+                //        a.finalBoneMatrices = LoadMat4Array(ja.at("finalBoneMatrices"));
 
-                    registry.animations.Add(entityID, a);
-                }
+                //    registry.animations.Add(entityID, a);
+                //}
 
                 if (jEntity.contains("collider"))
                 {

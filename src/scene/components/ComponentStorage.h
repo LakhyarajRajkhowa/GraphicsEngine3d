@@ -60,15 +60,6 @@ namespace Lengine {
             if (onAdd)
                 onAdd(entityID, m_Dense.back());
 
-            if constexpr (std::is_same_v<T, NameTagComponent>)
-            {
-                std::cout << "---- Registry Container Sizes (Name Tags) -----\n";
-                std::cout << "Entity : " << entityID << "\n";
-                std::cout << "Name   : " << component.name << "\n";  
-                std::cout << "m_Dense          : " << m_Dense.size() << "\n";
-                std::cout << "m_Sparse         : " << m_Sparse.size() << "\n";
-                std::cout << "m_DenseEntities  : " << m_DenseEntities.size() << "\n";
-            }
 
             return m_Dense.back();
         }

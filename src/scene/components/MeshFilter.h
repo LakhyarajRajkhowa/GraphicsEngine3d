@@ -8,6 +8,13 @@ namespace Lengine
 
     struct MeshFilter
     {
+        MeshFilter() = default;
+
+        MeshFilter(UUID meshID, Entity rootParent = NullEntity) :
+            meshID(meshID),
+            rootParent(rootParent)
+        {}
+
 
         UUID meshID = UUID::Null;
 
@@ -38,12 +45,6 @@ namespace Lengine
             pendingSubmesh = false;
         }
 
-        MeshFilter() = default;
-
-        MeshFilter(UUID meshID, Entity rootParent):
-            meshID(meshID),
-            rootParent(rootParent)
-        {}
 
     };
 

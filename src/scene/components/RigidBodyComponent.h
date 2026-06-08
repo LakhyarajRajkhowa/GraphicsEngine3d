@@ -15,6 +15,7 @@ struct RigidbodyComponent
     RigidbodyComponent() = default;
     explicit RigidbodyComponent(
         const bool useGravity,
+        const bool isKinematic = false,
         const float mass = 1.0f,
         const float linearDamping = 0.1f,
         const float angularDamping = 0.05f,
@@ -22,6 +23,7 @@ struct RigidbodyComponent
         const glm::vec3 angularVelocity = glm::vec3(0.0f)
     ) :
         useGravity(useGravity),
+        isKinematic(isKinematic),
         mass(mass),
         linearDamping(linearDamping),
         angularDamping(angularDamping),
