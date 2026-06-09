@@ -44,6 +44,7 @@ namespace Lengine {
             hierarchies.Remove(id);
             lights.Remove(id);
             scripts.Remove(id);
+            boneAttachments.Remove(id);
 
             auto it = std::find(entities.begin(), entities.end(), id);
             if (it != entities.end())
@@ -94,7 +95,9 @@ namespace Lengine {
         ComponentStorage<CameraComponent>     cameras;
         ComponentStorage<HierarchyComponent>  hierarchies;
         ComponentStorage<Light>               lights;
-        ComponentStorage<ScriptComponent> scripts;
+        ComponentStorage<ScriptComponent>     scripts;
+        ComponentStorage<BoneAttachmentComponent> boneAttachments;
+
 
 
         void Clear()
@@ -105,7 +108,7 @@ namespace Lengine {
             skeletons.Clear();     animations.Clear();     colliders.Clear();
             controllers.Clear();   movements.Clear();      rigidBodies.Clear();
             nameTags.Clear();      cameras.Clear();        hierarchies.Clear();
-            lights.Clear(); scripts.Clear();
+            lights.Clear();        scripts.Clear();        boneAttachments.Clear();
         }
 
 
@@ -154,6 +157,8 @@ namespace Lengine {
     template<> inline size_t Registry::StorageSize<HierarchyComponent>()  const { return hierarchies.Size(); }
     template<> inline size_t Registry::StorageSize<Light>()               const { return lights.Size(); }
     template<> inline size_t Registry::StorageSize<ScriptComponent>()     const { return scripts.Size(); }
+    template<> inline size_t Registry::StorageSize<BoneAttachmentComponent>()     const { return boneAttachments.Size(); }
+
 
 
 
@@ -171,6 +176,7 @@ namespace Lengine {
     template<> inline const std::vector<Entity>& Registry::GetStorageEntities<HierarchyComponent>()  const { return hierarchies.GetEntities(); }
     template<> inline const std::vector<Entity>& Registry::GetStorageEntities<Light>()               const { return lights.GetEntities(); }
     template<> inline const std::vector<Entity>& Registry::GetStorageEntities<ScriptComponent>()     const { return scripts.GetEntities(); }
+    template<> inline const std::vector<Entity>& Registry::GetStorageEntities<BoneAttachmentComponent>()     const { return boneAttachments.GetEntities(); }
 
 
     template<> inline bool Registry::HasComponent<TransformComponent>(Entity e) const { return transforms.Has(e); }
@@ -238,11 +244,15 @@ namespace Lengine {
     template<> inline Light& Registry::AddComponent<Light>(Entity e, const Light& c) { return lights.Add(e, c); }
     template<> inline void Registry::RemoveComponent<Light>(Entity e) { lights.Remove(e); }
 
-
     template<> inline bool Registry::HasComponent<ScriptComponent>(Entity e) const { return scripts.Has(e); }
     template<> inline ScriptComponent& Registry::GetComponent<ScriptComponent>(Entity e) { return scripts.Get(e); }
     template<> inline ScriptComponent& Registry::AddComponent<ScriptComponent>(Entity e, const ScriptComponent& c) { return scripts.Add(e, c); }
     template<> inline void Registry::RemoveComponent<ScriptComponent>(Entity e) { scripts.Remove(e); }
+
+    template<> inline bool Registry::HasComponent<BoneAttachmentComponent>(Entity e) const { return boneAttachments.Has(e); }
+    template<> inline BoneAttachmentComponent& Registry::GetComponent<BoneAttachmentComponent>(Entity e) { return boneAttachments.Get(e); }
+    template<> inline BoneAttachmentComponent& Registry::AddComponent<BoneAttachmentComponent>(Entity e, const BoneAttachmentComponent& c) { return boneAttachments.Add(e, c); }
+    template<> inline void Registry::RemoveComponent<BoneAttachmentComponent>(Entity e) { boneAttachments.Remove(e); }
 
     // for the const version of Get()
     template<> inline const TransformComponent& Registry::GetComponent<TransformComponent>(Entity e) const { return transforms.Get(e); }
@@ -259,6 +269,7 @@ namespace Lengine {
     template<> inline const HierarchyComponent& Registry::GetComponent<HierarchyComponent>(Entity e) const { return hierarchies.Get(e); }
     template<> inline const Light& Registry::GetComponent<Light>(Entity e) const { return lights.Get(e); }
     template<> inline const ScriptComponent& Registry::GetComponent<ScriptComponent>(Entity e) const { return scripts.Get(e); }
+    template<> inline const BoneAttachmentComponent& Registry::GetComponent<BoneAttachmentComponent>(Entity e) const { return boneAttachments.Get(e); }
 
 
 } // namespace Lengine

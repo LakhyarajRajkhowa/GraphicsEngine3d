@@ -24,8 +24,8 @@ namespace Lengine
         void PoseToMatrices(
             Skeleton& skeleton,
             const Pose& pose,
-            std::vector<glm::mat4>& boneMatrices
-        );
+            std::vector<glm::mat4>& boneMatrices,
+            std::vector<glm::mat4>& globalTransforms); 
 
     private:
         AssetManager& assetManager;
@@ -42,6 +42,10 @@ namespace Lengine
 
         // stored per-Update so EvaluateNode can read parameters without threading them through
         const std::unordered_map<std::string, float>* currentFloatParams = nullptr;
+
+
     };
+
+   
 
 }

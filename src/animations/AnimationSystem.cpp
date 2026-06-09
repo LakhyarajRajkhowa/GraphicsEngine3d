@@ -66,18 +66,18 @@ namespace Lengine
                 if (ctrl.transitionProgress >= 1.0f)
                 {
                     ctrl.CompleteTransition();
-                    PoseToMatrices(*skeleton, poseB, anim.finalBoneMatrices);
+                    PoseToMatrices(*skeleton, poseB, anim.finalBoneMatrices, anim.globalBoneTransforms);
                 }
                 else
                 {
                     Pose blended = BlendPoses(poseA, poseB, ctrl.transitionProgress);
-                    PoseToMatrices(*skeleton, blended, anim.finalBoneMatrices);
+                    PoseToMatrices(*skeleton, blended, anim.finalBoneMatrices, anim.globalBoneTransforms);
                 }
             }
             else
             {
                 Pose pose = EvaluateNode(curState->node, boneCount, dt);
-                PoseToMatrices(*skeleton, pose, anim.finalBoneMatrices);
+                PoseToMatrices(*skeleton, pose, anim.finalBoneMatrices, anim.globalBoneTransforms);
             }
 
             currentFloatParams = nullptr;
@@ -214,9 +214,11 @@ namespace Lengine
     void AnimationSystem::PoseToMatrices(
         Skeleton& skeleton,
         const Pose& pose,
-        std::vector<glm::mat4>& boneMatrices)
+        std::vector<glm::mat4>& boneMatrices,
+        std::vector<glm::mat4>& globalTransforms)
+
     {
-        std::vector<glm::mat4> globalTransforms(skeleton.bones.size());
+        globalTransforms.resize(skeleton.bones.size());
 
         for (size_t i = 0; i < skeleton.bones.size(); i++)
         {

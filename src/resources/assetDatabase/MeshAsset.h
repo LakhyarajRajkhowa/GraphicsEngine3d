@@ -3,8 +3,9 @@
 #include <fstream>
 #include <vector>
 #include <glm/glm.hpp>
-#include "../utils/UUID.h" // your UUID class
-#include "../graphics/geometry/Mesh.h" // Vertex struct, AABB struct
+
+#include "../utils/UUID.h" 
+#include "../graphics/geometry/Mesh.h" 
 #include "../graphics/geometry/Bounds.h"
 
 
@@ -232,6 +233,7 @@ namespace Lengine {
         std::string name;
         int parentIndex;
         glm::mat4 inverseBindMatrix;
+        glm::mat4 bindMatrix;
     };
 
     struct LSkeletonFile
@@ -241,8 +243,6 @@ namespace Lengine {
 
         std::vector<LSkeletonBone> bones;
     };
-
-
 
     static void WriteSkeleton(
         const std::filesystem::path& outPath,
@@ -277,6 +277,8 @@ namespace Lengine {
 
             out.write((char*)&bone.parentIndex, sizeof(int));
             out.write((char*)&bone.inverseBindMatrix, sizeof(glm::mat4));
+            out.write((char*)&bone.bindMatrix, sizeof(glm::mat4));
+
         }
 
         out.close();

@@ -10,6 +10,7 @@
 #include "platform/Window.h"
 
 #include "animations/AnimationSystem.h"
+#include "animations/BoneAttachmentSystem.h"
 #include "transform/TransformSystem.h"
 #include "physics/PhysicsSystem.h"
 #include "scripting/ScriptSystem.h"
@@ -81,6 +82,7 @@ namespace Lengine {
         RenderPipeline renderPipeline;
 
         AnimationSystem animationSystem;
+        BoneAttachmentSystem boneSystem;
         TransformSystem transformSystem;
         PhysicsSystem physicsSystem;
         ControllerSystem controllerSystem;

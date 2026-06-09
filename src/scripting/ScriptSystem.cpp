@@ -40,7 +40,7 @@ namespace Lengine {
 
             for (const std::string& name : sc.scriptNames)
             {
-                ScriptableEntity* s = library.Instantiate(name, e, *scene, input, physics);
+                ScriptableEntity* s = library.Instantiate(name, e, *scene, input, physics, assets);
                 if (!s) continue;
 
                 ownedScripts[e].push_back(s);

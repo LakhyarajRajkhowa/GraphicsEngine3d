@@ -22,6 +22,7 @@
 #include "Hierarchy.h"
 #include "Light.h"
 #include "ScriptComponent.h"
+#include "BoneAttachmentComponent.h"
 
 namespace Lengine {
 

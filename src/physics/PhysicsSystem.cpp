@@ -165,7 +165,7 @@ void PhysicsSystem::buildColliderActor(Entity entity, ColliderComponent& collide
             auto& t = registry->transforms.Get(entity);
             glm::vec3 pos = t.GetWorldPosition();
             glm::quat rot = t.GetWorldRotation();
-            ws = t.GetWorldScale();
+            glm::vec3 ws(1.0f); // transform scale shouldnt effect collider size
             pose = PxTransform(PxVec3(pos.x, pos.y, pos.z),
                 PxQuat(rot.x, rot.y, rot.z, rot.w));
         }

@@ -16,6 +16,7 @@ namespace Lengine {
         std::string name;
         int parentIndex;
         glm::mat4 inverseBindMatrix;
+        glm::mat4 bindMatrix;
     };
 
     class Skeleton
@@ -97,6 +98,8 @@ namespace Lengine {
 
             in.read((char*)&skeleton->bones[i].parentIndex, sizeof(int));
             in.read((char*)&skeleton->bones[i].inverseBindMatrix, sizeof(glm::mat4));
+            in.read((char*)&skeleton->bones[i].bindMatrix, sizeof(glm::mat4));
+
 
             skeleton->boneMap[skeleton->bones[i].name] = i;
         }

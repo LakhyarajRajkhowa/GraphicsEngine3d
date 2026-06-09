@@ -77,6 +77,9 @@ namespace Lengine {
 		TextureCache textureCache;
 		
 	public:
+		AssetManager() = default;
+		~AssetManager() = default;
+
 		AssetManager(EngineSettings& set):
 			settings(set)
 		{

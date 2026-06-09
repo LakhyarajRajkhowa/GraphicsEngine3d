@@ -45,6 +45,7 @@ namespace Lengine {
 
 		UUID skeletonID = UUID::Null;
 		std::vector<UUID> animationIDs = { UUID::Null };
+		UUID tposeAnimationID;
 
 		PrefabNode* rootPrefabNode; 
 
@@ -77,6 +78,7 @@ namespace Lengine {
 
 		UUID skeletonID = UUID::Null;
 		std::vector<UUID> animationIDs = { UUID::Null };
+		UUID tposeAnimationID = UUID::Null;
 
 		std::vector<PrefabNodeData> nodes ;
 	};
@@ -112,6 +114,8 @@ namespace Lengine {
 		data.name = prefab.name;
 		data.skeletonID = prefab.skeletonID;
 		data.animationIDs = prefab.animationIDs;
+		data.tposeAnimationID = prefab.tposeAnimationID;
+
 
 		CollectPrefabNodes(prefab.rootPrefabNode, -1, data.nodes);
 
@@ -136,6 +140,8 @@ namespace Lengine {
 
 		for (auto& animID : data.animationIDs)
 			out.write((char*)&animID, sizeof(UUID));
+
+		out.write((char*)&data.tposeAnimationID, sizeof(UUID));
 
 		// ---- Nodes ----
 		for (auto& n : data.nodes)
@@ -189,6 +195,9 @@ namespace Lengine {
 		data.animationIDs.resize(animCount);
 		for (uint32_t i = 0; i < animCount; i++)
 			in.read((char*)&data.animationIDs[i], sizeof(UUID));
+
+		in.read((char*)&data.tposeAnimationID, sizeof(UUID));
+
 
 		// ---- Nodes ----
 		for (uint32_t i = 0; i < nodeCount; i++)

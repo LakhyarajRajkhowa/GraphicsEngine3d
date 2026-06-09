@@ -15,10 +15,11 @@ namespace Lengine {
         assetManager(settings),
         renderPipeline(assetManager),
         animationSystem(assetManager),
+        boneSystem(assetManager),
         inputRouter(inputManager),
         controllerSystem(sceneManager, inputManager),
         movementSystem(sceneManager),
-        scriptSystem(sceneManager, inputManager, physicsSystem)
+        scriptSystem(sceneManager, inputManager, physicsSystem, assetManager)
 
     {
     }
@@ -43,6 +44,8 @@ namespace Lengine {
 
         scriptSystem.Init(Paths::GameExecutableFolder +  "/GameScripts.dll");
 
+        boneSystem.Init(*sceneManager.GetEditorScene());
+
     }
 
     void EngineCore::updateEssentials(const EditorMode& mode)
@@ -64,14 +67,15 @@ namespace Lengine {
     void EngineCore::updateRuntime(const EditorMode& mode)
     {
         Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
+        auto& registry = runtimeScene->GetRegistry();
 
         scriptSystem.Update(deltaTime);
 
         controllerSystem.Update(deltaTime);
         movementSystem.Update(deltaTime);
-        animationSystem.Update(runtimeScene->GetRegistry().animations, runtimeScene->GetRegistry().skeletons, deltaTime);
-
-        physicsSystem.UpdateRuntime(deltaTime, runtimeScene->GetRegistry().transforms);
+        animationSystem.Update(registry.animations, registry.skeletons, deltaTime);
+        boneSystem.Update(registry.boneAttachments, registry.animations, registry.skeletons, registry.transforms);
+        physicsSystem.UpdateRuntime(deltaTime, registry.transforms);
     }
 
 

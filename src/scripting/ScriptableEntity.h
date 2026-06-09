@@ -11,12 +11,13 @@ namespace Lengine {
     class Scene;
     class InputManager;
     class PhysicsSystem;
+    class AssetManager;
 
     class ScriptableEntity
     {
     public:
-        ScriptableEntity(Entity entity, Scene& scene, InputManager& input, PhysicsSystem& physics)
-            : entity(entity), scene(scene), input(input) , physics(physics){}
+        ScriptableEntity(Entity entity, Scene& scene, InputManager& input, PhysicsSystem& physics, AssetManager& assets)
+            : entity(entity), scene(scene), input(input) , physics(physics), assets(assets){}
 
         virtual ~ScriptableEntity() = default;
 
@@ -30,6 +31,7 @@ namespace Lengine {
         Scene&          scene;
         InputManager&   input;
         PhysicsSystem&  physics;
+        AssetManager& assets;
     };
 
 } // namespace Lengine
@@ -72,9 +74,10 @@ namespace Lengine {
         Lengine::Entity         entity,                                                     \
         Lengine::Scene&         scene,                                                   \
         Lengine::InputManager&  input,                                                  \
-        Lengine::PhysicsSystem& physics)                                                     \
+        Lengine::PhysicsSystem& physics,                                                    \
+        Lengine::AssetManager& assets)                                                     \
     {                                                                                     \
-        return new ClassName(entity, scene, input, physics);                                    \
+        return new ClassName(entity, scene, input, physics, assets);                                    \
     }                                                                                     \
     static Lengine::Internal::ScriptRegistrar                                             \
         s_registrar_##ClassName(#ClassName, __FILE__);

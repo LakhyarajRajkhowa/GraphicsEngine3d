@@ -86,6 +86,30 @@ namespace Lengine {
             std::vector<UUID>& animationIDs
         );
 
+
+        // Returns true if this node or any descendant references a mesh
+        static bool NodeHasMeshDescendant(const aiNode* node);
+       
+
+        // Finds the armature root node whose subtree contains mesh nodes
+        // "Armature" nodes typically have no meshes themselves but have
+        // bone children — we find the one whose subtree has meshes.
+        static const aiNode* FindSkinnedArmatureRoot(const aiNode* node);
+       
+
+        static UUID BakeTposeAnimation(
+            const aiScene* scene,
+            const std::filesystem::path& assetPath,
+            const std::filesystem::path& outDir,
+            const LSkeletonFile& skeleton,
+            const std::unordered_map<std::string, int>& boneMap,
+            const std::string& skeletonName
+        );
+        
+
+
+
+
     };
 
     class SkeletonImporter

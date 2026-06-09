@@ -31,6 +31,8 @@ namespace Lengine {
         void DestroyEntity(Entity entity);
         
          Entity GetRootParent(const Entity& entityID);
+         Entity GetParent(const Entity& entityID);
+
 
        
         const std::vector<Entity>& getEntities() const { return registry.GetEntities(); }

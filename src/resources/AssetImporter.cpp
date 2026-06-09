@@ -736,6 +736,20 @@ Prefab* PrefabImporter::Import(const std::filesystem::path& assetPath, UUID sour
             animationIDs
         );
 
+        const aiNode* skinnedArmature = FindSkinnedArmatureRoot(scene->mRootNode);
+
+        if (skinnedArmature)
+        {
+            prefab->tposeAnimationID = BakeTposeAnimation(
+                scene,
+                assetPath,
+                outSkeletonDir,
+                skeleton,
+                skeletonBoneMap,
+                std::to_string(skeletonID.toUint64())
+            );
+        }
+
     }
 
     prefab->skeletonID = skeletonID;
@@ -901,6 +915,130 @@ PrefabNode* PrefabImporter::LoadPrefabNode(
 
     return parentNode;
 }
+
+
+
+// Returns true if this node or any descendant references a mesh
+ bool PrefabImporter::NodeHasMeshDescendant(const aiNode* node)
+{
+    if (node->mNumMeshes > 0)
+        return true;
+
+    for (uint32_t i = 0; i < node->mNumChildren; i++)
+        if (NodeHasMeshDescendant(node->mChildren[i]))
+            return true;
+
+    return false;
+}
+
+// Finds the armature root node whose subtree contains mesh nodes
+// "Armature" nodes typically have no meshes themselves but have
+// bone children — we find the one whose subtree has meshes.
+ const aiNode* PrefabImporter::FindSkinnedArmatureRoot(const aiNode* node)
+{
+    // If this node has children that are bones (in boneMap) AND
+    // somewhere in the subtree there's a mesh → this is the armature
+    if (node->mNumMeshes == 0 && node->mNumChildren > 0)
+    {
+        if (NodeHasMeshDescendant(node))
+        {
+            // Check name heuristic: Blender armatures are named "Armature*"
+            // but we want the most specific match — recurse first
+            for (uint32_t i = 0; i < node->mNumChildren; i++)
+            {
+                const aiNode* found = FindSkinnedArmatureRoot(node->mChildren[i]);
+                if (found) return found;
+            }
+            return node; // this node is the armature root
+        }
+    }
+    return nullptr;
+}
+
+ UUID PrefabImporter::BakeTposeAnimation(
+    const aiScene* scene,
+    const std::filesystem::path& assetPath,
+    const std::filesystem::path& outDir,
+    const LSkeletonFile& skeleton,
+    const std::unordered_map<std::string, int>& boneMap,
+    const std::string& skeletonName
+)
+{
+    // Build a node-name → aiNode* lookup for fast access
+    std::unordered_map<std::string, const aiNode*> nodeMap;
+    std::function<void(const aiNode*)> collectNodes = [&](const aiNode* node)
+        {
+            nodeMap[node->mName.C_Str()] = node;
+            for (uint32_t i = 0; i < node->mNumChildren; i++)
+                collectNodes(node->mChildren[i]);
+        };
+    collectNodes(scene->mRootNode);
+
+    LAnimationFile tpose;
+    tpose.animationID = UUID();
+    tpose.skeletonID = skeleton.skeletonID;
+    tpose.name = "TPose";
+    tpose.duration = 1.0f;   // single-frame: 1 tick
+    tpose.ticksPerSecond = 1.0f;
+    tpose.boneTrackMap.resize(skeleton.bones.size(), -1);
+
+    for (const auto& [boneName, boneIndex] : boneMap)
+    {
+        auto nodeIt = nodeMap.find(boneName);
+        if (nodeIt == nodeMap.end())
+            continue;
+
+        const aiNode* boneNode = nodeIt->second;
+
+        // Decompose the node's local transform
+        aiVector3D   pos, scale;
+        aiQuaternion rot;
+        boneNode->mTransformation.Decompose(scale, rot, pos);
+
+        LAnimationTrack track;
+        track.boneName = boneName;
+        track.boneIndex = boneIndex;
+
+        LKeyPosition kp;
+        kp.position = glm::vec3(pos.x, pos.y, pos.z);
+        kp.time = 0.0f;
+        track.positions.push_back(kp);
+
+        LKeyRotation kr;
+        kr.rotation = glm::quat(rot.w, rot.x, rot.y, rot.z);
+        kr.time = 0.0f;
+        track.rotations.push_back(kr);
+
+        LKeyScale ks;
+        ks.scale = glm::vec3(scale.x, scale.y, scale.z);
+        ks.time = 0.0f;
+        track.scales.push_back(ks);
+
+        tpose.boneTrackMap[boneIndex] = (int)tpose.tracks.size();
+        tpose.tracks.push_back(track);
+    }
+
+    // Write the .lanim
+    std::filesystem::path outPath =
+        outDir / (skeletonName + "_TPose_" +
+            std::to_string(tpose.animationID.toUint64()) + ".lanim");
+
+    WriteLAnimation(outPath, tpose);
+
+    // Register
+    AssetMetadata meta;
+    meta.uuid = tpose.animationID;
+    meta.name = "TPose";
+    meta.libraryPath = outPath;
+    meta.sourcePath = assetPath;
+    meta.thumbnailPath = Paths::Icons + "texture_icon.png";
+    meta.type = AssetType::Animation;
+    AssetDatabase::RegisterAsset(meta);
+
+    return tpose.animationID;
+}
+
+
 
 
 
@@ -1315,8 +1453,8 @@ void SkeletonImporter::ImportSkeleton(
                 LSkeletonBone newBone{};
                 newBone.name = name;
                 newBone.parentIndex = -1;
-                newBone.inverseBindMatrix =
-                    ConvertMatrix(bone->mOffsetMatrix);
+                newBone.inverseBindMatrix = ConvertMatrix(bone->mOffsetMatrix);
+                newBone.bindMatrix = glm::inverse(newBone.inverseBindMatrix);
 
                 skeleton.bones.push_back(newBone);
             }

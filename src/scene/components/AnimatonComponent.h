@@ -8,12 +8,14 @@ namespace Lengine
     struct AnimationComponent
     {
         std::vector<UUID> animationIDs;
+        UUID tposeAnimationID;
         std::unordered_map<UUID, std::string> animationNames;
         std::unordered_map<std::string, UUID> animationNameToID;
 
         AnimatorController animator;
 
         std::vector<glm::mat4> finalBoneMatrices;
+        std::vector<glm::mat4> globalBoneTransforms;
 
         AnimationComponent() = default;
 

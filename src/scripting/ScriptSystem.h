@@ -10,7 +10,7 @@ namespace Lengine {
     class ScriptSystem
     {
     public:
-        ScriptSystem(SceneManager& scn, InputManager& input, PhysicsSystem& physics) : sceneManager(scn), input(input) , physics(physics){}
+        ScriptSystem(SceneManager& scn, InputManager& input, PhysicsSystem& physics, AssetManager& assets) : sceneManager(scn), input(input) , physics(physics), assets(assets){}
 
         void Init(const std::string& dllPath);
 
@@ -36,6 +36,7 @@ namespace Lengine {
         SceneManager& sceneManager;
         InputManager& input;
         PhysicsSystem& physics;
+        AssetManager& assets;
 
         ScriptLibrary library;
         std::unordered_map<Entity, std::vector<ScriptableEntity*>> ownedScripts;

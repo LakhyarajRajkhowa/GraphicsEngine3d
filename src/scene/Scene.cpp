@@ -381,6 +381,17 @@ Entity Scene::GetRootParent(const Entity& entityID)
     return currentID;
 }
 
+Entity Scene::GetParent(const Entity& entityID)
+{
+
+    if (registry.hierarchies.Has(entityID)) {
+        return registry.hierarchies.Get(entityID).parent;
+    }
+    else
+        return NullEntity;
+
+}
+
 void Scene::DestroyEntity(Entity entity)
 {
     destroyEntityQueue.push(entity);
@@ -656,6 +667,8 @@ std::unique_ptr<Scene> Scene::Clone()
     newReg.controllers.CloneFrom(thisReg.controllers, entityMap);
     newReg.movements.CloneFrom(thisReg.movements, entityMap);
     newReg.scripts.CloneFrom(thisReg.scripts, entityMap);
+    newReg.boneAttachments.CloneFrom(thisReg.boneAttachments, entityMap);
+
 
     if (primaryCamera != NullEntity)
     {

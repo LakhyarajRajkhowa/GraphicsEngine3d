@@ -500,15 +500,17 @@ Entity AssetManager::InstantiatePrefab(
 
             for (auto& animID : anim.animationIDs)
             {
-                bool loaded = true;
+                // Skip null sentinel
+                if (animID == UUID::Null)
+                    continue;
 
-                if (!GetAnimation(animID))
+                bool loaded = GetAnimation(animID) != nullptr;
+                if (!loaded)
                     loaded = LoadAnimation(animID);
 
                 if (loaded)
                 {
                     Animation* clip = GetAnimation(animID);
-
                     if (clip)
                     {
                         anim.animationNames[animID] = clip->name;
@@ -517,53 +519,56 @@ Entity AssetManager::InstantiatePrefab(
                 }
             }
 
-            // ---- bind pose init ----
-            if (registry.skeletons.Has(entities[0]))
+            // ---- T-Pose / bind pose init ----
+            if (registry.skeletons.Has(entities[0]) && prefab.tposeAnimationID != UUID::Null)
             {
                 const UUID& skelID = registry.skeletons.Get(entities[0]).skeletonID;
                 Skeleton* skeleton = GetSkeleton(skelID);
 
-                if (skeleton && !prefab.animationIDs.empty())
+                // Load T-pose clip if not already cached
+                Animation* tposeClip = GetAnimation(prefab.tposeAnimationID);
+                if (!tposeClip && LoadAnimation(prefab.tposeAnimationID))
+                    tposeClip = GetAnimation(prefab.tposeAnimationID);
+
+                if (skeleton && tposeClip)
                 {
-                    Animation* restClip = GetAnimation(prefab.animationIDs[0]);
+                    anim.tposeAnimationID = prefab.tposeAnimationID;
 
-                    if (restClip)
+                    anim.finalBoneMatrices.resize(skeleton->bones.size(), glm::mat4(1.0f));
+
+                    std::vector<glm::mat4> globalTransforms(skeleton->bones.size());
+
+                    for (size_t i = 0; i < skeleton->bones.size(); i++)
                     {
-                        anim.finalBoneMatrices.resize(skeleton->bones.size(), glm::mat4(1.0f));
+                        int       trackIndex = tposeClip->boneTrackMap[i];
+                        glm::mat4 localTransform(1.0f);
 
-                        std::vector<glm::mat4> globalTransforms(skeleton->bones.size());
-
-                        for (size_t i = 0; i < skeleton->bones.size(); i++)
+                        if (trackIndex != -1)
                         {
-                            int       trackIndex = restClip->boneTrackMap[i];
-                            glm::mat4 localTransform(1.0f);
+                            auto& track = tposeClip->tracks[trackIndex];
 
-                            if (trackIndex != -1)
-                            {
-                                auto& track = restClip->tracks[trackIndex];
+                            glm::vec3 pos = track.positions.empty() ? glm::vec3(0) : track.positions[0].position;
+                            glm::quat rot = track.rotations.empty() ? glm::quat(1, 0, 0, 0) : track.rotations[0].rotation;
+                            glm::vec3 scale = track.scales.empty() ? glm::vec3(1) : track.scales[0].scale;
 
-                                glm::vec3 pos = track.positions.empty() ? glm::vec3(0.0f) : track.positions[0].position;
-                                glm::quat rot = track.rotations.empty() ? glm::quat(1, 0, 0, 0) : track.rotations[0].rotation;
-                                glm::vec3 scale = track.scales.empty() ? glm::vec3(1.0f) : track.scales[0].scale;
-
-                                localTransform = glm::translate(glm::mat4(1.0f), pos)
-                                    * glm::mat4_cast(rot)
-                                    * glm::scale(glm::mat4(1.0f), scale);
-                            }
-
-                            int parent = skeleton->bones[i].parentIndex;
-
-                            globalTransforms[i] = (parent == -1)
-                                ? localTransform
-                                : globalTransforms[parent] * localTransform;
-
-                            anim.finalBoneMatrices[i] = globalTransforms[i]
-                                * skeleton->bones[i].inverseBindMatrix;
+                            localTransform = glm::translate(glm::mat4(1.0f), pos)
+                                * glm::mat4_cast(rot)
+                                * glm::scale(glm::mat4(1.0f), scale);
                         }
+
+                        int parent = skeleton->bones[i].parentIndex;
+
+                        globalTransforms[i] = (parent == -1)
+                            ? localTransform
+                            : globalTransforms[parent] * localTransform;
+
+                        anim.finalBoneMatrices[i] = globalTransforms[i]
+                            * skeleton->bones[i].inverseBindMatrix;
                     }
                 }
             }
         }
+    
     }
 
     return entities[0];
