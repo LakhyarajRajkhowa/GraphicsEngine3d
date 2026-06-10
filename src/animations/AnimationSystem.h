@@ -30,11 +30,11 @@ namespace Lengine
     private:
         AssetManager& assetManager;
 
-        Pose EvaluateNode(BlendNode& node, size_t boneCount, float dt);
-
+        Pose EvaluateNode(AnimatorController& ctrl, int nodeIndex, size_t boneCount, float dt);
         Pose EvaluateClip(BlendNode& node, size_t boneCount, float dt);
         Pose EvaluateBlend1D(BlendNode& node, size_t boneCount, float dt,
             const std::unordered_map<std::string, float>& floatParams);
+        Pose EvaluateMasked(AnimatorController& ctrl, BlendNode& node, size_t boneCount, float dt);
 
         glm::vec3 InterpolatePosition(AnimationTrack& track, float time, int delta);
         glm::quat InterpolateRotation(AnimationTrack& track, float time, int delta);

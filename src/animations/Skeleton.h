@@ -19,6 +19,14 @@ namespace Lengine {
         glm::mat4 bindMatrix;
     };
 
+    struct SkeletonBoneNode
+    {
+        std::string name;
+        int index = -1;
+        SkeletonBoneNode* parentNode = nullptr;
+        std::vector<SkeletonBoneNode*> childNodes;
+    };
+
     class Skeleton
     {
     public:
@@ -27,10 +35,15 @@ namespace Lengine {
 
         // metadata
         UUID skeletonID;
+        std::string name;
         std::string sourcePath;
 
-        // bone data
+        // bone data (for runtime use)
         std::vector<SkeletonBone> bones;
+
+        // bone Node hierarchy (for editor)
+        std::vector<std::unique_ptr<SkeletonBoneNode>> boneNodes;
+        SkeletonBoneNode* rootNode = nullptr;
 
         // name -> index lookup (very useful for animation)
         std::unordered_map<std::string, int> boneMap;
@@ -60,6 +73,43 @@ namespace Lengine {
         {
             return bones[index].parentIndex;
         }
+
+        void BuildBoneNodeHierarchy()
+        {
+            rootNode = nullptr;
+
+            boneNodes.clear();
+            boneNodes.resize(bones.size());
+
+            // Create all nodes
+            for (size_t i = 0; i < bones.size(); i++)
+            {
+                boneNodes[i] = std::make_unique<SkeletonBoneNode>();
+
+                boneNodes[i]->name = bones[i].name;
+                boneNodes[i]->index = static_cast<int>(i);
+            }
+
+            // Build hierarchy
+            for (size_t i = 0; i < bones.size(); i++)
+            {
+                int parentIndex = bones[i].parentIndex;
+
+                SkeletonBoneNode* node = boneNodes[i].get();
+
+                if (parentIndex == -1)
+                {
+                    rootNode = node;
+                }
+                else
+                {
+                    SkeletonBoneNode* parent = boneNodes[parentIndex].get();
+
+                    node->parentNode = parent;
+                    parent->childNodes.push_back(node);
+                }
+            }
+        }
     };
 
     static std::shared_ptr<Skeleton> ReadSkeleton(const std::filesystem::path& path)
@@ -73,6 +123,13 @@ namespace Lengine {
 
         // UUID
         in.read((char*)&skeleton->skeletonID, sizeof(UUID));
+
+        // Name
+        uint32_t nameLen;
+        in.read((char*)&nameLen, sizeof(uint32_t));
+
+        skeleton->name.resize(nameLen);
+        in.read(&skeleton->name[0], nameLen);
 
         // source path
         uint32_t pathLen;

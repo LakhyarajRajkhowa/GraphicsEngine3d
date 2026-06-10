@@ -723,7 +723,7 @@ Prefab* PrefabImporter::Import(const std::filesystem::path& assetPath, UUID sour
             skeletonID,
             skeleton,
             skeletonBoneMap,
-            std::to_string(skeletonID.toUint64())
+            assetName.string()
         );
 
         AnimationImporter::ImportAnimations(
@@ -731,7 +731,7 @@ Prefab* PrefabImporter::Import(const std::filesystem::path& assetPath, UUID sour
             assetPath,
             outSkeletonDir,  
             skeleton,
-            std::to_string(skeletonID.toUint64()),
+            assetName.string(),
             skeletonBoneMap,
             animationIDs
         );
@@ -955,6 +955,7 @@ PrefabNode* PrefabImporter::LoadPrefabNode(
     return nullptr;
 }
 
+
  UUID PrefabImporter::BakeTposeAnimation(
     const aiScene* scene,
     const std::filesystem::path& assetPath,
@@ -1023,6 +1024,11 @@ PrefabNode* PrefabImporter::LoadPrefabNode(
         outDir / (skeletonName + "_TPose_" +
             std::to_string(tpose.animationID.toUint64()) + ".lanim");
 
+    /*
+        Right now the same Tpose Animation is imported twice in the database
+
+        TDOD : Have to properly analyse these Tpose importing funcs later
+    */
     WriteLAnimation(outPath, tpose);
 
     // Register
@@ -1470,7 +1476,7 @@ void SkeletonImporter::ImportSkeleton(
 
     std::filesystem::path path = outDir / (cleanName + ".lskeleton" );
 
-
+    skeleton.name = cleanName;
     WriteSkeleton(path, skeleton);
 
     AssetMetadata skeletonMeta;
@@ -1619,7 +1625,7 @@ void AnimationImporter::ImportAnimations(
         std::string cleanName = SanitizeFilename(animFile.name);
 
         std::filesystem::path outPath =
-            outDir / (skeletonName + "_" + std::to_string(animFile.animationID) + ".lanim");
+            outDir / (skeletonName + "_" + cleanName + "_" + std::to_string(animFile.animationID.toUint64()) + ".lanim");
 
         WriteLAnimation(outPath, animFile);
 

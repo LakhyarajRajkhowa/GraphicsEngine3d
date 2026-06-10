@@ -12,6 +12,7 @@
 #include "graphics/material/MaterialLoader.h"
 #include "resources/ImageLoader.h"
 #include "animations/Animator.h"
+#include "animations/BoneMask.h"
 
 namespace Lengine {
 
@@ -47,6 +48,12 @@ namespace Lengine {
     struct AssetTypeResolver<Animation>
     {
         static constexpr AssetType Type = AssetType::Animation;
+    };
+
+    template<>
+    struct AssetTypeResolver<BoneMask>
+    {
+        static constexpr AssetType Type = AssetType::BoneMask;
     };
 }
 
@@ -126,6 +133,11 @@ namespace Lengine {
             else if constexpr (std::is_same_v<T, Animation>)
             {
                 asset = ReadAnimation(NormalizePath(meta->libraryPath.string()));
+
+            }
+            else if constexpr (std::is_same_v<T, BoneMask>)
+            {
+                asset = LoadBoneMask(NormalizePath(meta->libraryPath.string()));
 
             }
             else

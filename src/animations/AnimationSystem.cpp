@@ -60,8 +60,8 @@ namespace Lengine
             {
                 ctrl.transitionProgress += dt / ctrl.transitionDuration;
 
-                Pose poseA = EvaluateNode(curState->node, boneCount, dt);
-                Pose poseB = EvaluateNode(nextState->node, boneCount, dt);
+                Pose poseA = EvaluateNode(ctrl, curState->rootNodeIndex, boneCount, dt);
+                Pose poseB = EvaluateNode(ctrl, nextState->rootNodeIndex, boneCount, dt);
 
                 if (ctrl.transitionProgress >= 1.0f)
                 {
@@ -76,7 +76,7 @@ namespace Lengine
             }
             else
             {
-                Pose pose = EvaluateNode(curState->node, boneCount, dt);
+                Pose pose = EvaluateNode(ctrl, curState->rootNodeIndex, boneCount, dt);
                 PoseToMatrices(*skeleton, pose, anim.finalBoneMatrices, anim.globalBoneTransforms);
             }
 
@@ -84,8 +84,13 @@ namespace Lengine
         }
     }
 
-    Pose AnimationSystem::EvaluateNode(BlendNode& node, size_t boneCount, float dt)
+    Pose AnimationSystem::EvaluateNode(AnimatorController& ctrl, int nodeIndex, size_t boneCount, float dt)
     {
+        if (nodeIndex < 0 || nodeIndex >= (int)ctrl.nodes.size())
+            return Pose(boneCount);
+
+        BlendNode& node = ctrl.nodes[nodeIndex];
+
         switch (node.type)
         {
         case BlendNodeType::Clip:
@@ -95,6 +100,9 @@ namespace Lengine
             return EvaluateBlend1D(node, boneCount, dt,
                 currentFloatParams ? *currentFloatParams
                 : std::unordered_map<std::string, float>{});
+
+        case BlendNodeType::Masked:
+            return EvaluateMasked(ctrl, node, boneCount, dt);
         }
 
         return Pose(boneCount);
@@ -188,6 +196,13 @@ namespace Lengine
         Pose poseB = SamplePose(*clipB, entries[idxB].time, boneCount);
 
         return BlendPoses(poseA, poseB, t);
+    }
+
+    Pose AnimationSystem::EvaluateMasked(AnimatorController& ctrl, BlendNode& node, size_t boneCount, float dt)
+    {
+        Pose base = EvaluateNode(ctrl, node.baseNodeIndex, boneCount, dt);
+        Pose overlay = EvaluateNode(ctrl, node.overlayNodeIndex, boneCount, dt);
+        return BlendPoses(base, overlay, 1.0f, &node.boneMask);
     }
 
     Pose AnimationSystem::SamplePose(Animation& animation, float time, size_t boneCount)

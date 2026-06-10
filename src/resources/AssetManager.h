@@ -5,27 +5,25 @@
 #include <filesystem>
 
 
-#include "../core/settings.h"
-#include "../core/paths.h"
-#include "../assets/AssetRegistry.h"
-
-#include "../graphics/opengl/GLSLProgram.h"
-#include "../graphics/opengl/GLTexture.h"
-#include "../graphics/geometry/Mesh.h"
-#include "../graphics/material/MaterialLoader.h"
-#include "../resources/TextureCache.h"
-#include "../utils/metaFileSystem.h"
-#include "../utils/modelFileSystem.h"
-#include "../utils/jsonHelper.h"
-#include "../utils/C++20.h"
-#include "../scene/Scene.h"
-
+#include "core/settings.h"
+#include "core/paths.h"
+#include "assets/AssetRegistry.h"
+#include "animations/BoneMask.h"
+#include "graphics/opengl/GLSLProgram.h"
+#include "graphics/opengl/GLTexture.h"
+#include "graphics/geometry/Mesh.h"
+#include "graphics/material/MaterialLoader.h"
+#include "utils/metaFileSystem.h"
+#include "utils/modelFileSystem.h"
+#include "utils/jsonHelper.h"
+#include "utils/C++20.h"
+#include "scene/Scene.h"
+#include "resources/TextureCache.h"
 #include "resources/AssetEditor.h"
 #include "resources/AssetImporter.h"
-
 #include "resources/LoadingSystem.h"
-
 #include "transform/TransformSystem.h"
+
 namespace fs = std::filesystem;
 
 namespace Lengine {
@@ -72,6 +70,8 @@ namespace Lengine {
 		std::unordered_map<UUID, std::shared_ptr<Mesh>> submeshes;
 		std::unordered_map<UUID, std::shared_ptr<Skeleton>> skeletons;
 		std::unordered_map<UUID, std::shared_ptr<Animation>> animations;
+		std::unordered_map<UUID, std::shared_ptr<BoneMask>> boneMasks;
+
 
 
 		TextureCache textureCache;
@@ -106,6 +106,12 @@ namespace Lengine {
 		std::vector<AssetView> PrefabViews;
 		std::vector<AssetView> GetAllPrefabsFromDatabase() const { return PrefabViews; }
 
+		std::vector<AssetView> SkeletonViews;
+		std::vector<AssetView> GetAllSkeletonsFromDatabase() const { return SkeletonViews; }
+
+		std::vector<AssetView> BoneMaskViews;
+		std::vector<AssetView> GetAllBoneMasksFromDatabase() const { return BoneMaskViews; }
+
 		const AssetMetadata* GetAssetMetaData(const UUID& uuid) const;
 
 		// SUBMESH
@@ -118,7 +124,13 @@ namespace Lengine {
 		bool LoadSkeleton(const UUID& uuid);
 		Skeleton* GetSkeleton(const UUID& id);
 
-		// SKELETONS
+		// BONEMASKS
+		void SaveBoneMask(const UUID& id);
+		UUID CreateBoneMask(const std::string name);
+		std::shared_ptr<BoneMask> GetBoneMask(const UUID& id);
+		bool LoadBoneMask(const UUID& id);
+
+		// ANIMATIONS
 		bool LoadAnimation(const UUID& uuid);
 		Animation* GetAnimation(const UUID& id);
 

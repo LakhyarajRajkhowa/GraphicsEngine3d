@@ -52,8 +52,6 @@ namespace Lengine
             if (!skeleton || attachment.boneIndex >= (int)skeleton->bones.size())
                 continue;
 
-
-
             const glm::mat4& globalBoneTransform = anim.globalBoneTransforms[attachment.boneIndex];
             const glm::mat4& rootWorld = transforms.Get(skinnedRoot).worldMatrix;
 
@@ -65,6 +63,8 @@ namespace Lengine
 
             TransformComponent& t = transforms.Get(entity);
 
+            // NOTE : It is expected that the colliders are added individually 
+            // without any hierarchies , therefore the transforms are updated immediately
             t.worldMatrix = finalWorld;
             t.worldDirty = false;
 

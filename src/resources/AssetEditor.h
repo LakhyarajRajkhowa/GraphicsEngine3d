@@ -1,7 +1,7 @@
 #pragma once
 #include <filesystem>
 
-#include "../resources/assetDatabase/AssetDatabase.h"
+#include "resources/assetDatabase/AssetDatabase.h"
 namespace Lengine {
     class MaterialCreator {
     public:
@@ -76,5 +76,86 @@ namespace Lengine {
 
 
     };
+
+    class BoneMaskSaver
+    {
+    public:
+        static void Save(
+            const BoneMask& mask,
+            const std::filesystem::path& filepath)
+        {
+            std::ofstream file(filepath);
+
+            if (!file.is_open())
+                return;
+
+            file << "Name=" << mask.name << "\n";
+            file << "ID=" << (uint64_t)mask.id << "\n";
+            file << "SkeletonID=" << (uint64_t)mask.skeletonId << "\n";
+
+            file << "\n";
+
+            file << "Bones=" << mask.boneNames.size() << "\n";
+
+            for (const auto& [boneId, boneName] : mask.boneNames)
+            {
+                file << boneId << "," << boneName << "\n";
+            }
+
+            file << "\n";
+
+            file << "Masks=" << mask.boneMask.size() << "\n";
+
+            for (size_t i = 0; i < mask.boneMask.size(); i++)
+            {
+                file << i << "," << mask.boneMask[i] << "\n";
+            }
+        }
+    };
     
+    class BoneMaskCreator
+    {
+    public:
+        static UUID Create(const std::string& name, UUID skeletonId = UUID::Null)
+        {
+            UUID id;
+
+            std::string finalName = name;
+
+            std::filesystem::path libPath =
+                Paths::GameLibrary_Assets_BoneMask + finalName + ".bmask";
+
+            int counter = 1;
+
+            while (std::filesystem::exists(libPath))
+            {
+                finalName = name + "_" + std::to_string(counter++);
+
+                libPath =
+                    Paths::GameLibrary_Assets_BoneMask +
+                    finalName +
+                    ".bmask";
+            }
+
+            BoneMask mask;
+            mask.name = finalName;
+            mask.id = id;
+            mask.skeletonId = skeletonId;
+
+            BoneMaskSaver::Save(mask, libPath);
+
+            AssetMetadata meta;
+            meta.uuid = id;
+            meta.name = finalName;
+            meta.type = AssetType::BoneMask;
+            meta.libraryPath = libPath;
+            meta.sourcePath = "";
+            meta.thumbnailPath = Paths::Icons + "bone_mask_icon.png";
+
+            AssetDatabase::RegisterAsset(meta);
+
+            return id;
+        }
+    };
+
 }

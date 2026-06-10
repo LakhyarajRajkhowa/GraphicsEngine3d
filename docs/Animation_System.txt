@@ -1,0 +1,137 @@
+# Animation State Machine
+
+The animation system is based on a state machine consisting of states, transitions, and parameters.
+
+## States
+
+A state represents an animation behavior. A state can contain either:
+
+* A single animation clip.
+* A 1D blend space that blends multiple animations using a float parameter.
+
+Only one state is active at a time.
+
+---
+
+## Parameters
+
+Parameters are values used to control transitions and blend spaces.
+
+Supported parameter types:
+
+* Float
+* Bool
+
+Examples:
+
+* `Speed`
+* `IsGrounded`
+* `Attack`
+* `Sprint`
+
+Parameters can be modified at runtime from scripts or gameplay code.
+
+---
+
+## Transitions
+
+Transitions define when the animator moves from one state to another.
+
+A transition contains:
+
+* Source state
+* Destination state
+* Blend duration
+* One or more conditions
+
+Example:
+
+Walk → Run
+
+Condition:
+
+Speed > 3.0
+
+When all conditions are satisfied, the transition becomes valid.
+
+---
+
+## Any State Transitions
+
+A transition may originate from Any State.
+
+Any State transitions can fire regardless of the currently active state.
+
+Common uses:
+
+* Death
+* Hit reactions
+* Interrupt animations
+* Global actions
+
+---
+
+## Transition Evaluation Order
+
+Transitions are evaluated in the order they were added.
+
+The first valid transition is immediately selected.
+
+Example:
+
+1. Any State → Death
+2. Any State → Hit
+3. Walk → Run
+
+If both Death and Hit are valid, Death will be chosen because it appears first.
+
+For this reason, higher-priority transitions should be placed before lower-priority transitions.
+
+---
+
+## Transition Rules
+
+A transition can only fire when:
+
+* Its conditions evaluate to true.
+* The destination state is different from the current state.
+* No other transition is currently in progress.
+
+---
+
+## Blend Spaces
+
+A Blend1D state blends between multiple animations using a float parameter.
+
+Example:
+
+Parameter: Speed
+
+Entries:
+
+* Idle = 0
+* Walk = 2
+* Run = 6
+
+As the Speed parameter changes, the system automatically interpolates between the nearest animations.
+
+---
+
+## State Blending
+
+When transitioning between states, the animator blends from the current pose to the next pose over the transition duration.
+
+This provides smooth animation changes and avoids abrupt snapping between states.
+
+---
+
+## Typical Workflow
+
+1. Create animation states.
+2. Assign clips or blend spaces to each state.
+3. Create parameters.
+4. Add transitions and conditions.
+5. Set a default state.
+6. Update parameters from gameplay code.
+
+The animator will automatically evaluate transitions and update the active state every frame.

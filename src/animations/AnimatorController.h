@@ -4,9 +4,9 @@
 #include <vector>
 #include <unordered_map>
 #include <variant>
+#include <algorithm>
 
 #include "animations/Pose.h"
-
 #include "utils/UUID.h"
 
 namespace Lengine
@@ -14,7 +14,7 @@ namespace Lengine
 
     // ─── Blend Node ──────────────────────────────────────────────────────────
 
-    enum class BlendNodeType { Clip, Blend1D };
+    enum class BlendNodeType { Clip, Blend1D, Masked };
 
     struct BlendNode
     {
@@ -37,6 +37,11 @@ namespace Lengine
         std::string               parameterName;
         float                     playbackSpeed = 1.0f;
 
+        // Masked
+        int                baseNodeIndex = -1;
+        int                overlayNodeIndex = -1;
+        std::vector<float> boneMask;
+
         static BlendNode MakeClip(UUID clipID, bool looping = true)
         {
             BlendNode n;
@@ -55,9 +60,18 @@ namespace Lengine
             return n;
         }
 
+        static BlendNode MakeMasked(int baseNodeIndex, int overlayNodeIndex, std::vector<float> boneMask)
+        {
+            BlendNode n;
+            n.type = BlendNodeType::Masked;
+            n.baseNodeIndex = baseNodeIndex;
+            n.overlayNodeIndex = overlayNodeIndex;
+            n.boneMask = std::move(boneMask);
+            return n;
+        }
+
         void AddEntry(UUID animID, float threshold)
         {
-
             blend1DEntries.push_back({ animID, threshold, 0.0f });
 
             std::sort(blend1DEntries.begin(), blend1DEntries.end(),
@@ -74,8 +88,8 @@ namespace Lengine
 
     struct TransitionCondition
     {
-        std::string  paramName;
-        ConditionOp  op;
+        std::string               paramName;
+        ConditionOp               op;
         std::variant<float, bool> value;
 
         bool Evaluate(float f) const
@@ -116,7 +130,7 @@ namespace Lengine
     struct AnimState
     {
         std::string name;
-        BlendNode   node;
+        int         rootNodeIndex = -1;
     };
 
 
@@ -124,9 +138,9 @@ namespace Lengine
 
     struct AnimTransition
     {
-        int                             fromState = -1;  // -1 = any state
-        int                             toState = -1;
-        float                           duration = 0.2f;
+        int                              fromState = -1;
+        int                              toState = -1;
+        float                            duration = 0.2f;
         std::vector<TransitionCondition> conditions;
 
         bool CanFire(
@@ -139,8 +153,6 @@ namespace Lengine
 
             if (toState == currentState)
                 return false;
-
-
 
             for (const auto& cond : conditions)
             {
@@ -172,7 +184,8 @@ namespace Lengine
 
     struct AnimatorController
     {
-        std::vector<AnimState>      states;
+        std::vector<BlendNode>    nodes;
+        std::vector<AnimState>    states;
         std::vector<AnimTransition> transitions;
 
         std::unordered_map<std::string, float> floatParams;
@@ -185,14 +198,31 @@ namespace Lengine
         bool  isTransitioning = false;
         float nextStateTime = 0.0f;
 
-        // ── Setup API ────────────────────────────────────────────────────────
+        // ── Node API ─────────────────────────────────────────────────────────
 
-        int AddState(const std::string& name, BlendNode node)
+        int AddNode(BlendNode node)
         {
-            int idx = (int)states.size();
-            states.push_back({ name, std::move(node) });
+            int idx = (int)nodes.size();
+            nodes.push_back(std::move(node));
             return idx;
         }
+
+        // ── State API ────────────────────────────────────────────────────────
+
+        int AddState(const std::string& name, int rootNodeIndex)
+        {
+            int idx = (int)states.size();
+            states.push_back({ name, rootNodeIndex });
+            return idx;
+        }
+
+        int AddStateClip(const std::string& name, UUID clipID, bool looping = true)
+        {
+            int nodeIdx = AddNode(BlendNode::MakeClip(clipID, looping));
+            return AddState(name, nodeIdx);
+        }
+
+        // ── Transition API ───────────────────────────────────────────────────
 
         void AddTransition(
             int fromState,

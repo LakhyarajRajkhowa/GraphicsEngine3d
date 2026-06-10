@@ -43,6 +43,8 @@ void AssetManager::UpdateAllAssetViews()
     pbrMaterialViews.clear();
     TextureViews.clear();
     PrefabViews.clear();
+    SkeletonViews.clear();
+    BoneMaskViews.clear();
 
     const auto& allAssets = AssetDatabase::GetAllAssets();
 
@@ -70,6 +72,12 @@ void AssetManager::UpdateAllAssetViews()
             break;
         case AssetType::Prefab:
             PrefabViews.emplace_back(view);
+            break;
+        case AssetType::Skeleton:
+            SkeletonViews.emplace_back(view);
+            break;
+        case AssetType::BoneMask:
+            BoneMaskViews.emplace_back(view);
             break;
 
         default:
@@ -157,6 +165,43 @@ Skeleton* AssetManager::GetSkeleton(const UUID& id) {
         return nullptr;
 
     return it->second.get();
+}
+
+
+// -------- BONEMASK ---------
+UUID AssetManager::CreateBoneMask(const std::string name) {
+    return BoneMaskCreator::Create(name);
+}
+
+void AssetManager::SaveBoneMask(const UUID& id) {
+    const BoneMask& bm = *GetBoneMask(id);
+    const std::filesystem::path libPath = GetAssetMetaData(id)->libraryPath;
+
+    BoneMaskSaver::Save(bm, libPath);
+}
+
+std::shared_ptr<BoneMask> AssetManager::GetBoneMask(const UUID& id)
+{
+    auto it = boneMasks.find(id);
+    if (it == boneMasks.end())
+        return nullptr;
+
+    return it->second;
+}
+
+bool AssetManager::LoadBoneMask(const UUID& id) {
+
+    if (GetBoneMask(id)) return true;
+
+    auto bm = AssetDatabase::LoadAsset<BoneMask>(id);
+
+    if (bm) {
+        boneMasks[id] = bm;
+        return true;
+
+    }
+    else 
+        return false;
 }
 
 // -------- ANIMATION ----------
@@ -487,6 +532,10 @@ Entity AssetManager::InstantiatePrefab(
 
             if (!GetSkeleton(sk.skeletonID) && !LoadSkeleton(sk.skeletonID))
                 sk.skeletonID = UUID::Null;
+            else {
+                auto* skeleton = GetSkeleton(sk.skeletonID);
+                if(skeleton) skeleton->BuildBoneNodeHierarchy();
+            }
         }
     }
 

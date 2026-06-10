@@ -127,6 +127,16 @@ namespace Lengine {
         return true;
     }
 
+    static std::string ShortenFilename(const std::string& name)
+    {
+        const size_t maxLen = 80;
+
+        if (name.size() <= maxLen)
+            return name;
+
+        return name.substr(0, maxLen);
+    }
+
     static std::string SanitizeFilename(std::string name)
     {
         const std::string illegal = "<>:\"/\\|?*";
@@ -137,17 +147,7 @@ namespace Lengine {
                 c = '_';
         }
 
-        return name;
-    }
-
-    static std::string ShortenFilename(const std::string& name)
-    {
-        const size_t maxLen = 80;
-
-        if (name.size() <= maxLen)
-            return name;
-
-        return name.substr(0, maxLen);
+        return ShortenFilename(name);
     }
 }
 

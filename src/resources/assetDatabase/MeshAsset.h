@@ -236,9 +236,11 @@ namespace Lengine {
         glm::mat4 bindMatrix;
     };
 
+
     struct LSkeletonFile
     {
         UUID skeletonID;
+        std::string name;
         std::string sourcePath;
 
         std::vector<LSkeletonBone> bones;
@@ -258,6 +260,12 @@ namespace Lengine {
 
         // UUID
         out.write((char*)&skeleton.skeletonID, sizeof(UUID));
+
+        // Name
+         // source path
+        size_t nameLen = skeleton.name.size();
+        out.write((char*)&nameLen, sizeof(uint32_t));
+        out.write(skeleton.name.c_str(), nameLen);
 
         // source path
         size_t pathLen = skeleton.sourcePath.size();
@@ -280,6 +288,8 @@ namespace Lengine {
             out.write((char*)&bone.bindMatrix, sizeof(glm::mat4));
 
         }
+
+
 
         out.close();
     }
@@ -330,7 +340,6 @@ namespace Lengine {
     static void WriteLAnimation(const std::filesystem::path& path, const LAnimationFile& anim)
     {
     
-
 
         std::ofstream out(path, std::ios::binary);
         
