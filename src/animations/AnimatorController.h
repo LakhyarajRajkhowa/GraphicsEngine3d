@@ -12,35 +12,85 @@
 namespace Lengine
 {
 
-    // ─── Blend Node ──────────────────────────────────────────────────────────
 
     enum class BlendNodeType { Clip, Blend1D, Masked };
 
     struct BlendNode
     {
+        // Common
+
         BlendNodeType type = BlendNodeType::Clip;
 
-        // Clip
-        UUID  clipID = UUID::Null;
-        float clipTime = 0.0f;
-        bool  looping = true;
+        std::string nodeName;
 
-        // Blend1D
+        float weight = 1.0f;
+
+        // Runtime
+
+        float normalisedClipTime = 0.0f;
+
+        // --- Clip Node ---
+
+        UUID  clipID = UUID::Null;
+
+        float clipTime = 0.0f;
+        float clipDuration = 1.0f;
+
+        bool looping = true;
+
+        // --- Blend1D Node ---
+
         struct Blend1DEntry
         {
             UUID  animID = UUID::Null;
+
             float threshold = 0.0f;
             float time = 0.0f;
         };
 
         std::vector<Blend1DEntry> blend1DEntries;
-        std::string               parameterName;
-        float                     playbackSpeed = 1.0f;
 
-        // Masked
-        int                baseNodeIndex = -1;
-        int                overlayNodeIndex = -1;
+        std::string parameterName;
+
+        float playbackSpeed = 1.0f;
+
+        // --- Masked Node ---
+
+        int baseNodeIndex = -1;
+        int overlayNodeIndex = -1;
+
+        UUID boneMaskID = UUID::Null;
+
         std::vector<float> boneMask;
+
+        // Utility
+
+        void AddEntry(UUID animID, float threshold)
+        {
+            blend1DEntries.push_back({
+                animID,
+                threshold,
+                0.0f
+                });
+
+            std::sort(
+                blend1DEntries.begin(),
+                blend1DEntries.end(),
+                [](const Blend1DEntry& a, const Blend1DEntry& b)
+                {
+                    return a.threshold < b.threshold;
+                });
+        }
+
+        bool CheckForExitTime(float exitTime)
+        {
+            normalisedClipTime =
+                std::min(clipTime / clipDuration, 1.0f);
+
+            return normalisedClipTime >= exitTime;
+        }
+
+        // Factory Functions
 
         static BlendNode MakeClip(UUID clipID, bool looping = true)
         {
@@ -69,20 +119,9 @@ namespace Lengine
             n.boneMask = std::move(boneMask);
             return n;
         }
-
-        void AddEntry(UUID animID, float threshold)
-        {
-            blend1DEntries.push_back({ animID, threshold, 0.0f });
-
-            std::sort(blend1DEntries.begin(), blend1DEntries.end(),
-                [](const Blend1DEntry& a, const Blend1DEntry& b) {
-                    return a.threshold < b.threshold;
-                });
-        }
     };
 
 
-    // ─── Transition Condition ────────────────────────────────────────────────
 
     enum class ConditionOp { Greater, Less, Equal, NotEqual };
 
@@ -125,7 +164,6 @@ namespace Lengine
     };
 
 
-    // ─── State ───────────────────────────────────────────────────────────────
 
     struct AnimState
     {
@@ -134,14 +172,16 @@ namespace Lengine
     };
 
 
-    // ─── Transition ──────────────────────────────────────────────────────────
 
     struct AnimTransition
     {
         int                              fromState = -1;
         int                              toState = -1;
         float                            duration = 0.2f;
+        bool                             hasExitTime = false;
+        float                            exitTime = 1.0f;
         std::vector<TransitionCondition> conditions;
+
 
         bool CanFire(
             int currentState,
@@ -180,7 +220,6 @@ namespace Lengine
     };
 
 
-    // ─── Animator Controller ─────────────────────────────────────────────────
 
     struct AnimatorController
     {
@@ -198,16 +237,17 @@ namespace Lengine
         bool  isTransitioning = false;
         float nextStateTime = 0.0f;
 
-        // ── Node API ─────────────────────────────────────────────────────────
 
         int AddNode(BlendNode node)
         {
             int idx = (int)nodes.size();
+
+            node.nodeName = "node_" + std::to_string(idx);
+
             nodes.push_back(std::move(node));
             return idx;
         }
 
-        // ── State API ────────────────────────────────────────────────────────
 
         int AddState(const std::string& name, int rootNodeIndex)
         {
@@ -222,23 +262,26 @@ namespace Lengine
             return AddState(name, nodeIdx);
         }
 
-        // ── Transition API ───────────────────────────────────────────────────
 
         void AddTransition(
             int fromState,
             int toState,
             float duration,
+            bool hasExitTime = false,
+            float exitTime = 0.0f,
             std::vector<TransitionCondition> conditions = {})
         {
-            transitions.push_back({ fromState, toState, duration, std::move(conditions) });
+            transitions.push_back({ fromState, toState, duration, hasExitTime, exitTime,  std::move(conditions) });
         }
 
         void AddTransitionFromAny(
             int toState,
             float duration,
+            bool hasExitTime = false,
+            float exitTime = 0.0f,
             std::vector<TransitionCondition> conditions = {})
         {
-            transitions.push_back({ -1, toState, duration, std::move(conditions) });
+            transitions.push_back({ -1, toState, duration, hasExitTime, exitTime, std::move(conditions) });
         }
 
         void SetDefaultState(int stateIndex)
@@ -246,7 +289,6 @@ namespace Lengine
             currentState = stateIndex;
         }
 
-        // ── Parameter API ────────────────────────────────────────────────────
 
         void SetFloat(const std::string& name, float value) { floatParams[name] = value; }
         void SetBool(const std::string& name, bool  value) { boolParams[name] = value; }
@@ -263,7 +305,6 @@ namespace Lengine
             return it != boolParams.end() ? it->second : false;
         }
 
-        // ── Transition Check (called by AnimationSystem) ──────────────────────
 
         bool CheckTransitions()
         {
@@ -272,13 +313,32 @@ namespace Lengine
 
             for (const auto& t : transitions)
             {
+                if (t.hasExitTime)
+                {
+                    if (nodes[states[currentState].rootNodeIndex].CheckForExitTime(t.exitTime))
+                        continue;
+                }
+
                 if (t.CanFire(currentState, floatParams, boolParams))
                 {
                     nextState = t.toState;
                     transitionDuration = t.duration;
                     transitionProgress = 0.0f;
-                    nextStateTime = 0.0f;
                     isTransitioning = true;
+
+                    // Reset the incoming state's node here, 
+                    // so it plays from 0 during the crossfade
+                    int nodeIdx = states[nextState].rootNodeIndex;
+                    if (nodeIdx >= 0 && nodeIdx < (int)nodes.size())
+                    {
+                        BlendNode& node = nodes[nodeIdx];
+                        node.clipTime = 0.0f;
+                        node.normalisedClipTime = 0.0f;
+                        for (auto& entry : node.blend1DEntries)
+                            entry.time = 0.0f;
+                    }
+
+                    nextStateTime = 0.0f;
                     return true;
                 }
             }
@@ -288,6 +348,7 @@ namespace Lengine
 
         void CompleteTransition()
         {
+
             currentState = nextState;
             nextState = -1;
             transitionProgress = 0.0f;

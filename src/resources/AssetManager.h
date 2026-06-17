@@ -212,6 +212,8 @@ namespace Lengine {
 
 		AssetType getAssetType(const UUID& id);
 
+		const bool IsLoadingAssets() { return isLoadingAssets; }
+
 	private:
 		EngineSettings& settings;
 
@@ -221,6 +223,8 @@ namespace Lengine {
 		std::queue<PrefabData> pendingPrefabs;
 
 		std::unordered_map<std::string, UUID> texturePathToUUID;
+
+		bool isLoadingAssets = false;
 
 
 	};

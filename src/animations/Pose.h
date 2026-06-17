@@ -48,7 +48,8 @@ namespace Lengine
 
         for (size_t i = 0; i < a.BoneCount(); i++)
         {
-            float w = (mask && i < mask->size()) ? (*mask)[i] : t;
+            float w = t;
+            w *= (mask && i < mask->size()) ? (*mask)[i] : 1.0f;
             w = glm::clamp(w, 0.0f, 1.0f);
 
             result.bones[i].position = glm::mix(a.bones[i].position, b.bones[i].position, w);

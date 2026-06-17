@@ -10,6 +10,7 @@ namespace Lengine {
 
 		std::vector<std::pair<int, std::string>> boneNames;
 		std::vector<float> boneMask;
+
 	};
 
     static std::shared_ptr<BoneMask> LoadBoneMask(

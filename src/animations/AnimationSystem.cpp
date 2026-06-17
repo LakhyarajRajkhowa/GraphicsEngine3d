@@ -48,6 +48,7 @@ namespace Lengine
 
             currentFloatParams = &ctrl.floatParams;
 
+      
             ctrl.CheckTransitions();
 
             AnimState* curState = ctrl.GetCurrentState();
@@ -58,6 +59,8 @@ namespace Lengine
 
             if (ctrl.isTransitioning && nextState)
             {
+                BlendNode& node = ctrl.nodes[curState->rootNodeIndex];
+
                 ctrl.transitionProgress += dt / ctrl.transitionDuration;
 
                 Pose poseA = EvaluateNode(ctrl, curState->rootNodeIndex, boneCount, dt);
@@ -65,6 +68,8 @@ namespace Lengine
 
                 if (ctrl.transitionProgress >= 1.0f)
                 {
+
+                  
                     ctrl.CompleteTransition();
                     PoseToMatrices(*skeleton, poseB, anim.finalBoneMatrices, anim.globalBoneTransforms);
                 }
@@ -79,6 +84,7 @@ namespace Lengine
                 Pose pose = EvaluateNode(ctrl, curState->rootNodeIndex, boneCount, dt);
                 PoseToMatrices(*skeleton, pose, anim.finalBoneMatrices, anim.globalBoneTransforms);
             }
+
 
             currentFloatParams = nullptr;
         }
@@ -115,12 +121,14 @@ namespace Lengine
         if (!clip)
             return Pose(boneCount);
 
+        node.clipDuration = clip->duration; // TODO : do this only once
         node.clipTime += dt * clip->ticksPerSecond;
 
         if (node.looping)
             node.clipTime = fmod(node.clipTime, clip->duration);
         else
             node.clipTime = std::min(node.clipTime, clip->duration);
+
 
         return SamplePose(*clip, node.clipTime, boneCount);
     }
@@ -202,7 +210,7 @@ namespace Lengine
     {
         Pose base = EvaluateNode(ctrl, node.baseNodeIndex, boneCount, dt);
         Pose overlay = EvaluateNode(ctrl, node.overlayNodeIndex, boneCount, dt);
-        return BlendPoses(base, overlay, 1.0f, &node.boneMask);
+        return BlendPoses(base, overlay, node.weight, &node.boneMask);
     }
 
     Pose AnimationSystem::SamplePose(Animation& animation, float time, size_t boneCount)
@@ -322,5 +330,7 @@ namespace Lengine
 
         return track.scales.back().scale;
     }
+
+
 
 }

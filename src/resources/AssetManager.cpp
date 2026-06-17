@@ -1708,6 +1708,13 @@ void AssetManager::ProcessGpuUploads()
 
 void AssetManager::SyncAssetsToScene(Scene& activeScene) {
 
+    if (pendingPrefabs.empty() && pendingSubmeshes.empty() && pendingTextureRequests.empty()) {
+        isLoadingAssets = false;
+        return;
+    }
+
+    isLoadingAssets = true;
+
     if (!pendingPrefabs.empty()) {
         InstantiatePrefab(activeScene, pendingPrefabs.front());
         pendingPrefabs.pop();

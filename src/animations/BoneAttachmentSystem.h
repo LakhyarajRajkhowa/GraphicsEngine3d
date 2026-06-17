@@ -3,7 +3,7 @@
 #include "scene/components/ComponentStorage.h"
 #include "scene/components/BoneAttachmentComponent.h"
 #include "scene/components/Transform.h"
-#include "scene/components/AnimatonComponent.h"
+#include "scene/components/AnimationComponent.h"
 #include "scene/components/SkeletonComponent.h"
 #include "resources/AssetManager.h"
 

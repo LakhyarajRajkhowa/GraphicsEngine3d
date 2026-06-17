@@ -12,7 +12,7 @@
 #include "MeshFilter.h"
 #include "Transform.h"
 #include "SkeletonComponent.h"
-#include "AnimatonComponent.h"
+#include "AnimationComponent.h"
 #include "ColliderComponent.h"
 #include "ControllerComponent.h"
 #include "MovementComponent.h"

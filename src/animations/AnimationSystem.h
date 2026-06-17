@@ -3,7 +3,6 @@
 #include "scene/components/ComponentStorage.h"
 #include "resources/AssetManager.h"
 #include "animations/Pose.h"
-#include "animations/AnimatorController.h"
 
 namespace Lengine
 {
@@ -42,6 +41,7 @@ namespace Lengine
 
         // stored per-Update so EvaluateNode can read parameters without threading them through
         const std::unordered_map<std::string, float>* currentFloatParams = nullptr;
+
 
 
     };
