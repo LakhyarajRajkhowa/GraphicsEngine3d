@@ -5,6 +5,9 @@
 #include <unordered_map>
 #include <variant>
 #include <algorithm>
+#include <numeric>
+
+#include <glm/glm.hpp>
 
 #include "animations/Pose.h"
 #include "utils/UUID.h"
@@ -13,7 +16,7 @@ namespace Lengine
 {
 
 
-    enum class BlendNodeType { Clip, Blend1D, Masked };
+    enum class BlendNodeType { Clip, Blend1D, Blend2D, Masked };
 
     struct BlendNode
     {
@@ -54,6 +57,21 @@ namespace Lengine
 
         float playbackSpeed = 1.0f;
 
+        // --- Blend2D Node ---
+
+        struct Blend2DEntry
+        {
+            UUID  animID = UUID::Null;
+
+            glm::vec2 position = glm::vec2(0.0f); // (paramX, paramY) sample point
+            float     time = 0.0f;
+        };
+
+        std::vector<Blend2DEntry> blend2DEntries;
+
+        std::string parameterNameX;
+        std::string parameterNameY;
+
         // --- Masked Node ---
 
         int baseNodeIndex = -1;
@@ -82,6 +100,16 @@ namespace Lengine
                 });
         }
 
+        void AddEntry2D(UUID animID, glm::vec2 position)
+        {
+            blend2DEntries.push_back({
+                animID,
+                position,
+                0.0f
+                });
+
+        }
+
         bool CheckForExitTime(float exitTime)
         {
             normalisedClipTime =
@@ -106,6 +134,16 @@ namespace Lengine
             BlendNode n;
             n.type = BlendNodeType::Blend1D;
             n.parameterName = paramName;
+            n.playbackSpeed = playbackSpeed;
+            return n;
+        }
+
+        static BlendNode MakeBlend2D(const std::string& paramNameX, const std::string& paramNameY, float playbackSpeed = 1.0f)
+        {
+            BlendNode n;
+            n.type = BlendNodeType::Blend2D;
+            n.parameterNameX = paramNameX;
+            n.parameterNameY = paramNameY;
             n.playbackSpeed = playbackSpeed;
             return n;
         }
@@ -315,7 +353,7 @@ namespace Lengine
             {
                 if (t.hasExitTime)
                 {
-                    if (nodes[states[currentState].rootNodeIndex].CheckForExitTime(t.exitTime))
+                    if (!nodes[states[currentState].rootNodeIndex].CheckForExitTime(t.exitTime))
                         continue;
                 }
 
@@ -335,6 +373,8 @@ namespace Lengine
                         node.clipTime = 0.0f;
                         node.normalisedClipTime = 0.0f;
                         for (auto& entry : node.blend1DEntries)
+                            entry.time = 0.0f;
+                        for (auto& entry : node.blend2DEntries)
                             entry.time = 0.0f;
                     }
 

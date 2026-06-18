@@ -20,7 +20,7 @@ namespace Lengine {
 
         if (!library.NeedsReload()) return;
 
-        std::cout << "[ScriptSystem] Hot reload — restarting scripts\n";
+        std::cout << "[ScriptSystem] Hot reload : Restarting scripts...\n";
 
         OnDestroy();          
         library.Load(library.GetPath());  

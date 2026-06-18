@@ -2,6 +2,7 @@
 #include <cmath>
 #include <numeric>
 #include <algorithm>
+#include <limits>
 
 #include "utils/Profiler.h"
 
@@ -48,7 +49,7 @@ namespace Lengine
 
             currentFloatParams = &ctrl.floatParams;
 
-      
+
             ctrl.CheckTransitions();
 
             AnimState* curState = ctrl.GetCurrentState();
@@ -69,7 +70,7 @@ namespace Lengine
                 if (ctrl.transitionProgress >= 1.0f)
                 {
 
-                  
+
                     ctrl.CompleteTransition();
                     PoseToMatrices(*skeleton, poseB, anim.finalBoneMatrices, anim.globalBoneTransforms);
                 }
@@ -104,6 +105,11 @@ namespace Lengine
 
         case BlendNodeType::Blend1D:
             return EvaluateBlend1D(node, boneCount, dt,
+                currentFloatParams ? *currentFloatParams
+                : std::unordered_map<std::string, float>{});
+
+        case BlendNodeType::Blend2D:
+            return EvaluateBlend2D(node, boneCount, dt,
                 currentFloatParams ? *currentFloatParams
                 : std::unordered_map<std::string, float>{});
 
@@ -206,6 +212,133 @@ namespace Lengine
         return BlendPoses(poseA, poseB, t);
     }
 
+    Pose AnimationSystem::EvaluateBlend2D(
+        BlendNode& node,
+        size_t boneCount,
+        float dt,
+        const std::unordered_map<std::string, float>& floatParams)
+    {
+        auto& entries = node.blend2DEntries;
+
+        if (entries.empty())
+            return Pose(boneCount);
+
+        if (entries.size() == 1)
+        {
+            Animation* clip = assetManager.GetAnimation(entries[0].animID);
+            if (!clip) return Pose(boneCount);
+
+            entries[0].time += dt * clip->ticksPerSecond * node.playbackSpeed;
+            entries[0].time = fmod(entries[0].time, clip->duration);
+
+            return SamplePose(*clip, entries[0].time, boneCount);
+        }
+
+        glm::vec2 query(0.0f);
+        if (auto it = floatParams.find(node.parameterNameX); it != floatParams.end())
+            query.x = it->second;
+        if (auto it = floatParams.find(node.parameterNameY); it != floatParams.end())
+            query.y = it->second;
+
+        // Advance all clip times first (same pattern as Blend1D)
+        for (auto& entry : entries)
+        {
+            Animation* clip = assetManager.GetAnimation(entry.animID);
+
+            if (!clip)
+                continue;
+
+            entry.time += dt * clip->ticksPerSecond * node.playbackSpeed;
+            entry.time = fmod(entry.time, clip->duration);
+        }
+
+        // --- Gradient band weighting ---
+        // For each sample point i, its weight is reduced by every other
+        // point j that the query has moved "past" (projected onto the
+        // i->j axis). This generalizes 1D straddle-blending to scattered
+        // 2D points without requiring a grid or triangulation.
+
+        std::vector<float> weights(entries.size(), 1.0f);
+
+        for (size_t i = 0; i < entries.size(); i++)
+        {
+            for (size_t j = 0; j < entries.size(); j++)
+            {
+                if (i == j)
+                    continue;
+
+                glm::vec2 ij = entries[j].position - entries[i].position;
+                float lenSq = glm::dot(ij, ij);
+
+                if (lenSq < 1e-6f)
+                    continue; // duplicate/coincident points, skip to avoid div-by-zero
+
+                glm::vec2 iq = query - entries[i].position;
+                float t = glm::dot(iq, ij) / lenSq;
+
+                weights[i] *= glm::clamp(1.0f - t, 0.0f, 1.0f);
+            }
+        }
+
+        float totalWeight = std::accumulate(weights.begin(), weights.end(), 0.0f);
+
+        if (totalWeight < 1e-6f)
+        {
+            // Query point doesn't fall meaningfully near any sample --
+            // fall back to nearest neighbour rather than returning a
+            // degenerate/empty pose.
+            size_t nearest = 0;
+            float bestDist = std::numeric_limits<float>::max();
+
+            for (size_t i = 0; i < entries.size(); i++)
+            {
+                float d = glm::distance(query, entries[i].position);
+                if (d < bestDist)
+                {
+                    bestDist = d;
+                    nearest = i;
+                }
+            }
+
+            Animation* clip = assetManager.GetAnimation(entries[nearest].animID);
+            if (!clip) return Pose(boneCount);
+            return SamplePose(*clip, entries[nearest].time, boneCount);
+        }
+
+        // --- Weighted N-way pose accumulation ---
+        // BlendPoses(a, b, t) only handles two poses. To combine an
+        // arbitrary number of weighted poses correctly (not just chained
+        // binary lerps, which would NOT equal a true weighted average),
+        // accumulate incrementally: each new sample is blended in with a
+        // re-normalized factor based on the running weight sum so far.
+
+        Pose result(boneCount);
+        float runningWeight = 0.0f;
+        bool any = false;
+
+        for (size_t i = 0; i < entries.size(); i++)
+        {
+            float w = weights[i] / totalWeight;
+
+            if (w < 1e-4f)
+                continue;
+
+            Animation* clip = assetManager.GetAnimation(entries[i].animID);
+            if (!clip)
+                continue;
+
+            Pose sample = SamplePose(*clip, entries[i].time, boneCount);
+
+            AccumulateWeightedPose(result, sample, w, runningWeight, any);
+        }
+
+        if (!any)
+            return Pose(boneCount);
+
+        return result;
+    }
+
+   
     Pose AnimationSystem::EvaluateMasked(AnimatorController& ctrl, BlendNode& node, size_t boneCount, float dt)
     {
         Pose base = EvaluateNode(ctrl, node.baseNodeIndex, boneCount, dt);

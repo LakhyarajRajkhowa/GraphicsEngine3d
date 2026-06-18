@@ -33,6 +33,8 @@ namespace Lengine
         Pose EvaluateClip(BlendNode& node, size_t boneCount, float dt);
         Pose EvaluateBlend1D(BlendNode& node, size_t boneCount, float dt,
             const std::unordered_map<std::string, float>& floatParams);
+        Pose EvaluateBlend2D(BlendNode& node, size_t boneCount, float dt,
+            const std::unordered_map<std::string, float>& floatParams);
         Pose EvaluateMasked(AnimatorController& ctrl, BlendNode& node, size_t boneCount, float dt);
 
         glm::vec3 InterpolatePosition(AnimationTrack& track, float time, int delta);
@@ -41,6 +43,7 @@ namespace Lengine
 
         // stored per-Update so EvaluateNode can read parameters without threading them through
         const std::unordered_map<std::string, float>* currentFloatParams = nullptr;
+
 
 
 
