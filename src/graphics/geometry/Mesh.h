@@ -48,6 +48,7 @@ namespace Lengine {
         void addVertex(const Vertex& v);
         void addIndex(uint32_t i);
 
+        // TODO : Create skinnedMesh component for meshes with skeletons attached
         std::vector<int> bonePalette;
 
 

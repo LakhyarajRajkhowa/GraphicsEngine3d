@@ -30,8 +30,8 @@ namespace Lengine {
 
         void DestroyEntity(Entity entity);
         
-         Entity GetRootParent(const Entity& entityID);
-         Entity GetParent(const Entity& entityID);
+         const Entity GetRootParent(const Entity& entityID) const;
+         const Entity GetParent(const Entity& entityID) const;
 
 
        

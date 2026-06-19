@@ -12,9 +12,11 @@
 #include "animations/Pose.h"
 #include "utils/UUID.h"
 
+// TODO : Animation Controller should be a reusable asset ,
+//        but with instance just like Material
+
 namespace Lengine
 {
-
 
     enum class BlendNodeType { Clip, Blend1D, Blend2D, Masked };
 

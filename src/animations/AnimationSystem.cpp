@@ -29,8 +29,10 @@ namespace Lengine
             if (!ctrl.IsValid())
                 continue;
 
+
             if (!skeletons.Has(entity))
                 continue;
+
 
             auto& sk = skeletons.Get(entity);
 
@@ -41,6 +43,7 @@ namespace Lengine
 
             if (!skeleton)
                 continue;
+
 
             if (anim.finalBoneMatrices.size() != skeleton->bones.size())
                 anim.finalBoneMatrices.resize(skeleton->bones.size(), glm::mat4(1.0f));

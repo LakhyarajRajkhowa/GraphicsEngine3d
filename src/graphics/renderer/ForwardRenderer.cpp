@@ -240,7 +240,8 @@ void ForwardRenderer::lightingPass(const RenderContext& ctx, std::shared_ptr<GLS
 
 void ForwardRenderer::CollectAndSort(const RenderContext& ctx)
 {
-    const Registry& registry = ctx.scene->GetRegistry();
+    const Scene* scene = ctx.scene;
+    const Registry& registry = scene->GetRegistry();
 
     opaqueQueue.Clear();
     transparentQueue.Clear();
@@ -274,14 +275,14 @@ void ForwardRenderer::CollectAndSort(const RenderContext& ctx)
         Material* mat = assetManager.GetMaterial(mr.inst.baseMaterial);
         if (!mat) continue;
 
-
-
         RenderItem item;
         item.mesh = mesh;
         item.entity = entity;
         item.modelMatrix = t.worldMatrix;
         item.material = ResolveMaterial(*mat, mr.inst);
 
+        
+        // TODO : instead of searching through the whole tree, find a better way to get the aniamtion
         if (registry.HasComponent<AnimationComponent>(mf.rootParent))
         {
             const AnimationComponent& anim =
@@ -290,6 +291,7 @@ void ForwardRenderer::CollectAndSort(const RenderContext& ctx)
             if (!anim.finalBoneMatrices.empty()
                 && !mesh->bonePalette.empty())
             {
+
                 item.hasSkeleton = true;
                 item.boneMatrices = &anim.finalBoneMatrices;
                 item.bonePalette = &mesh->bonePalette;

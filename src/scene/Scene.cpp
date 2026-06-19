@@ -364,7 +364,7 @@ Entity Scene::copyEntity(const Entity originalEntityId, Entity entityId)
 }
 
 
-Entity Scene::GetRootParent(const Entity& entityID)
+const Entity Scene::GetRootParent(const Entity& entityID) const
 {
     Entity currentID = entityID;
 
@@ -381,7 +381,7 @@ Entity Scene::GetRootParent(const Entity& entityID)
     return currentID;
 }
 
-Entity Scene::GetParent(const Entity& entityID)
+const Entity Scene::GetParent(const Entity& entityID) const
 {
 
     if (registry.hierarchies.Has(entityID)) {

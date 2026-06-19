@@ -113,6 +113,7 @@ namespace Lengine {
         void flushPending();
         void syncTransformsToPhysX(ComponentStorage<TransformComponent>& transforms);
         void updateTransforms(ComponentStorage<TransformComponent>& transforms);
+        void updateKinematicBodies(float dt);
 
 
         void buildColliderActor(Entity entity, ColliderComponent& col);

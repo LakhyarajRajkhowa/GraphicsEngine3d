@@ -9,6 +9,7 @@
 #include "core/paths.h"
 #include "assets/AssetRegistry.h"
 #include "animations/BoneMask.h"
+#include "animations/AnimatorSerializer.h"
 #include "graphics/opengl/GLSLProgram.h"
 #include "graphics/opengl/GLTexture.h"
 #include "graphics/geometry/Mesh.h"
@@ -21,7 +22,7 @@
 #include "resources/TextureCache.h"
 #include "resources/AssetEditor.h"
 #include "resources/AssetImporter.h"
-#include "resources/LoadingSystem.h"
+#include "resources/ILoadingScreen.h"
 #include "transform/TransformSystem.h"
 
 namespace fs = std::filesystem;
@@ -191,21 +192,27 @@ namespace Lengine {
 		UUID currentLoadingAsset = UUID::Null;
 		std::pair<UUID, std::string> currentImportingAsset = std::pair(UUID::Null, "Unknown");
 		
+		void SetLoadingScreen(ILoadingScreen* screen)
+		{
+			loadingScreen = screen;
+		}
+
 		bool haveAssetState(const UUID& assetID);
 
 		bool hasLoadingAssets();
 		float getLoadingProgress(const UUID& id) const;
 		void ProcessGpuUploads();
-		void drawLoadingScreens();
+		void updateLoadingStatus();
 
 		bool hasImportingAssets();
 		float getImportingProgress(const UUID& id) const;
-		void drawImportingScreens();
+		void updateImportStatus();
 
 		void SyncAssetsToScene(Scene& activeScene);
 		void UpdateAssetStates();
 		void ProcessPendingTextureRequests(Scene& activeScene);
 
+		void updateLoadingScreens();
 
 		UUID getCurrentLoadingAsset() { return currentLoadingAsset; }
 		std::pair<UUID, std::string> getCurrentImportingAsset() { return currentImportingAsset; }
@@ -224,6 +231,7 @@ namespace Lengine {
 
 		std::unordered_map<std::string, UUID> texturePathToUUID;
 
+		ILoadingScreen* loadingScreen = nullptr;
 		bool isLoadingAssets = false;
 
 

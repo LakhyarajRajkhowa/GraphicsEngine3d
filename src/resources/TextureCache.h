@@ -2,8 +2,8 @@
 #include <map>
 #include <string>
 
-#include "../graphics/opengl/GLTexture.h"
-#include "../resources/ImageLoader.h"
+#include "graphics/opengl/GLTexture.h"
+#include "resources/ImageLoader.h"
 
 namespace Lengine {
 

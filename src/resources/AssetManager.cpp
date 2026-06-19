@@ -32,6 +32,10 @@ void AssetManager::Update(Scene& activeScene) {
     UpdateAllAssetViews();
     SyncAssetsToScene(activeScene);
     ProcessGpuUploads();
+
+    updateLoadingScreens();
+
+    
 }
 
 void AssetManager::UpdateAllAssetViews()
@@ -987,6 +991,7 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
     json jScene;
     jScene["uuid"] = scene.getUUID().toUint64();
     jScene["name"] = sceneName;
+    jScene["primaryCamera"] = scene.GetPrimaryCamera();
     jScene["entities"] = json::array();
 
     const Registry& registry = scene.GetRegistry();
@@ -1020,6 +1025,7 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 
             json jMeshFilter;
             jMeshFilter["meshID"] = mf.meshID.toUint64();
+            jMeshFilter["rootParent"] = mf.rootParent;
             jEntity["meshFilter"] = jMeshFilter;
         }
 
@@ -1056,6 +1062,7 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jCam["farClip"] = c.farClip;
             jCam["aspectRatio"] = c.aspectRatio;
             jCam["orthoSize"] = c.orthoSize;
+            jCam["target"] = c.target;
             jEntity["camera"] = jCam;
         }
 
@@ -1086,40 +1093,70 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jSkeleton["finalMatrices"] = SaveMat4Array(s.finalMatrices);
             jEntity["skeleton"] = jSkeleton;
         }
+        if (registry.animations.Has(entityID))
+        {
+            const auto& a =
+                registry.animations.Get(entityID);
 
-        //if (registry.animations.Has(entityID))
-        //{
-        //    const AnimationComponent& a = registry.animations.Get(entityID);
+            json jAnim;
 
-        //    json jAnim;
 
-        //    json animIDs = json::array();
-        //    for (const auto& id : a.animationIDs)
-        //        animIDs.push_back(id.toUint64());
+            json animIDs = json::array();
 
-        //    jAnim["animationIDs"] = animIDs;
-        //    jAnim["currentAnimationID"] = a.currentAnimationID.toUint64();
-        //    jAnim["currentTime"] = a.currentTime;
-        //    jAnim["playbackSpeed"] = a.playbackSpeed;
-        //    jAnim["looping"] = a.looping;
+            for (const auto& id : a.animationIDs)
+                animIDs.push_back(id.toUint64());
 
-        //    auto SaveMat4Array = [](const std::vector<glm::mat4>& mats) {
-        //        json arr = json::array();
+            jAnim["animationIDs"] = animIDs;
 
-        //        for (const auto& m : mats) {
-        //            json mat = json::array();
-        //            for (int i = 0; i < 4; i++)
-        //                for (int j = 0; j < 4; j++)
-        //                    mat.push_back(m[i][j]);
+            jAnim["tposeAnimationID"] =
+                a.tposeAnimationID.toUint64();
 
-        //            arr.push_back(mat);
-        //        }
-        //        return arr;
-        //        };
 
-        //    jAnim["finalBoneMatrices"] = SaveMat4Array(a.finalBoneMatrices);
-        //    jEntity["animation"] = jAnim;
-        //}
+            json animNames;
+
+            for (const auto& [id, name] : a.animationNames)
+            {
+                animNames[
+                    std::to_string(id.toUint64())
+                ] = name;
+            }
+
+            jAnim["animationNames"] = animNames;
+
+
+            auto SaveMat4Array =
+                [](const std::vector<glm::mat4>& mats)
+                {
+                    json arr = json::array();
+
+                    for (const auto& m : mats)
+                    {
+                        json mat = json::array();
+
+                        for (int i = 0; i < 4; i++)
+                        {
+                            for (int j = 0; j < 4; j++)
+                            {
+                                mat.push_back(m[i][j]);
+                            }
+                        }
+
+                        arr.push_back(mat);
+                    }
+
+                    return arr;
+                };
+
+            jAnim["finalBoneMatrices"] =
+                SaveMat4Array(a.finalBoneMatrices);
+
+
+            jAnim["controller"] =
+                AnimatorSerializer::Save(a.animator);
+
+            jEntity["animation"] =
+                jAnim;
+        }
 
         if (registry.hierarchies.Has(entityID))
         {
@@ -1305,6 +1342,19 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
             }
         }
 
+      
+        // set primary camera
+        
+        if (jScene.contains("primaryCamera")) {
+            uint64_t primaryCamera = jScene.at("primaryCamera").get<uint64_t>();
+            auto rootIt = idMap.find(primaryCamera);
+            if (rootIt != idMap.end())
+                scene->SetPrimaryCamera((Entity)rootIt->second);
+        }
+        else
+            scene->SetPrimaryCamera(NullEntity);
+
+
         for (const auto& jEntity : jEntities)
         {
             try {
@@ -1331,8 +1381,14 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                 if (jEntity.contains("meshFilter"))
                 {
                     MeshFilter mf;
-                    mf.meshID = UUID(jEntity["meshFilter"].at("meshID").get<uint64_t>());
+
+                    mf.meshID =
+                        UUID(jEntity["meshFilter"]
+                            .at("meshID")
+                            .get<uint64_t>());
+
                     registry.meshFilters.Add(entityID, mf);
+              
                 }
 
                 if (jEntity.contains("meshRenderer"))
@@ -1375,7 +1431,7 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     CameraComponent c;
 
                     if (jc.contains("projectionType"))
-                        c.projectionType = static_cast<CameraComponent::ProjectionType>(
+                        c.projectionType = static_cast<ProjectionType>(
                             jc.at("projectionType").get<int>()
                             );
 
@@ -1384,6 +1440,7 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     if (jc.contains("farClip"))      c.farClip = jc.at("farClip");
                     if (jc.contains("aspectRatio"))  c.aspectRatio = jc.at("aspectRatio");
                     if (jc.contains("orthoSize"))    c.orthoSize = jc.at("orthoSize");
+                    if (jc.contains("target"))       c.target = jc.at("target").get<uint32_t>();
 
                     c.recalculateProjection();
 
@@ -1421,43 +1478,100 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.skeletons.Add(entityID, s);
                 }
 
-                //if (jEntity.contains("animation"))
-                //{
-                //    const auto& ja = jEntity.at("animation");
+                if (jEntity.contains("animation"))
+                {
+                    const auto& ja = jEntity.at("animation");
 
-                //    AnimationComponent a;
+                    AnimationComponent a;
 
-                //    if (ja.contains("animationIDs"))
-                //    {
-                //        for (const auto& idStr : ja.at("animationIDs"))
-                //            a.animationIDs.push_back(UUID(idStr.get<uint64_t>()));
-                //    }
+                    if (ja.contains("animationIDs"))
+                    {
+                        for (const auto& id :
+                            ja["animationIDs"])
+                        {
+                            a.animationIDs.push_back(
+                                UUID(id.get<uint64_t>())
+                            );
+                        }
+                    }
 
-                //    if (ja.contains("currentAnimationID"))
-                //        a.currentAnimationID = UUID(ja.at("currentAnimationID").get<uint64_t>());
+                    if (ja.contains("tposeAnimationID"))
+                    {
+                        a.tposeAnimationID =
+                            UUID(
+                                ja["tposeAnimationID"]
+                                .get<uint64_t>()
+                            );
+                    }
 
-                //    if (ja.contains("currentTime"))    a.currentTime = ja.at("currentTime");
-                //    if (ja.contains("playbackSpeed"))  a.playbackSpeed = ja.at("playbackSpeed");
-                //    if (ja.contains("looping"))        a.looping = ja.at("looping");
+                    if (ja.contains("animationNames"))
+                    {
+                        for (auto& [idStr, name] :
+                            ja["animationNames"].items())
+                        {
+                            UUID id(
+                                std::stoull(idStr)
+                            );
 
-                //    auto LoadMat4Array = [](const json& arr) {
-                //        std::vector<glm::mat4> mats;
-                //        for (const auto& matJson : arr) {
-                //            glm::mat4 m(1.0f);
-                //            int index = 0;
-                //            for (int i = 0; i < 4; i++)
-                //                for (int j = 0; j < 4; j++)
-                //                    m[i][j] = matJson[index++];
-                //            mats.push_back(m);
-                //        }
-                //        return mats;
-                //        };
+                            a.animationNames[id] =
+                                name.get<std::string>();
 
-                //    if (ja.contains("finalBoneMatrices"))
-                //        a.finalBoneMatrices = LoadMat4Array(ja.at("finalBoneMatrices"));
+                            // rebuild reverse lookup
+                            a.animationNameToID[
+                                name.get<std::string>()
+                            ] = id;
+                        }
+                    }
 
-                //    registry.animations.Add(entityID, a);
-                //}
+                    auto LoadMat4Array =
+                        [](const json& arr)
+                        {
+                            std::vector<glm::mat4> mats;
+
+                            for (const auto& matJson : arr)
+                            {
+                                glm::mat4 m(1.0f);
+
+                                int index = 0;
+
+                                for (int i = 0; i < 4; i++)
+                                {
+                                    for (int j = 0; j < 4; j++)
+                                    {
+                                        m[i][j] =
+                                            matJson[index++];
+                                    }
+                                }
+
+                                mats.push_back(m);
+                            }
+
+                            return mats;
+                        };
+
+                    if (ja.contains("finalBoneMatrices"))
+                    {
+                        a.finalBoneMatrices =
+                            LoadMat4Array(
+                                ja["finalBoneMatrices"]
+                            );
+                    }
+
+                    if (ja.contains("controller"))
+                    {
+                        AnimatorSerializer::Load(
+                            ja["controller"],
+                            a.animator
+                        );
+                    }
+
+                    registry.animations.Add(
+                        entityID,
+                        a
+                    );
+             
+            
+                }
 
                 if (jEntity.contains("collider"))
                 {
@@ -1650,6 +1764,13 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     scene->GetRootEntities().push_back(newID);
                 }
             }
+        }
+
+        // remap meshFilters.rootEntity
+        for (auto e : scene->GetRegistry().meshFilters.GetEntities()) {
+            auto& mf = scene->GetRegistry().meshFilters.Get(e);
+
+            mf.rootParent = scene->GetRootParent(e);
         }
 
         std::cout << "Loaded scene: " << scene->getName() << "\n";
@@ -1918,47 +2039,67 @@ float AssetManager::getImportingProgress(const UUID& id) const
     }
 }
 
-void AssetManager::drawLoadingScreens() {
+void AssetManager::updateLoadingStatus() {
 
-    if (hasLoadingAssets()) {
-        UUID id = getCurrentLoadingAsset();
-        AssetType type = getAssetType(id);
-        std::string assetPath = "Unknown";
-        float progess = getLoadingProgress(id);
+    if (!loadingScreen || !hasLoadingAssets())
+        return;
 
-        LoadingSystem::LoadingUIConfig config;
+    UUID id = getCurrentLoadingAsset();
 
-        switch (type) {
-        case AssetType::Mesh:
-            assetPath = GetAssetMetaData(id)->libraryPath.string();
-            config.title = "Loading Mesh";
-            break;
-        case AssetType::Texture:
-            assetPath = GetAssetMetaData(id)->libraryPath.string();
-            config.title = "Loading Texture";
-            break;
-        }
+    LoadingScreenInfo info;
 
-        config.message = "Loading :" + assetPath;
-        LoadingSystem::progressBarUI(progess, config);
+    info.progress = getLoadingProgress(id);
+
+    switch (getAssetType(id))
+    {
+    case AssetType::Mesh:
+        info.title = "Loading Mesh";
+        break;
+
+    case AssetType::Texture:
+        info.title = "Loading Texture";
+        break;
     }
+
+    info.message =
+        "Loading: " +
+        GetAssetMetaData(id)->libraryPath.string();
+
+    loadingScreen->Show(info);
+
+
 }
 
-void AssetManager::drawImportingScreens() {
+void AssetManager::updateImportStatus() {
 
-    if (hasImportingAssets()) {
-        UUID id = getCurrentImportingAsset().first;
-        std::string assetPath = "Unknown";
-        float progess = getImportingProgress(id);
+    if (!loadingScreen  || !hasImportingAssets() )
+        return;
 
-        LoadingSystem::LoadingUIConfig config;
 
-        assetPath = getCurrentImportingAsset().second;
-        config.title = "Importing Asset";
+    UUID id = getCurrentImportingAsset().first;
 
-        config.message = "Importing :" + assetPath;
-        LoadingSystem::progressBarUI(progess, config);
+    LoadingScreenInfo info;
+
+    info.title = "Importing Asset";
+    info.progress = getImportingProgress(id);
+
+    info.message =
+        "Importing: " +
+        getCurrentImportingAsset().second;
+
+    loadingScreen->Show(info);
+
+
+}
+
+void AssetManager::updateLoadingScreens(){
+    if (!hasLoadingAssets() && !hasImportingAssets()) {
+        loadingScreen->Hide();
+        return;
     }
+
+    updateLoadingStatus();
+    updateImportStatus();
 }
 
 AssetType AssetManager::getAssetType(const UUID& id) {

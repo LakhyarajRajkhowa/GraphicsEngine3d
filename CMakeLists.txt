@@ -15,7 +15,6 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 # ────────────────────────────────────────────────
 # Third Party include dirs
 # ────────────────────────────────────────────────
-set(IMGUI_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/external/imgui)
 set(SDL2_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/external/SDL2)
 set(GL_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/external/GL)
 set(GLM_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/src/external/glm)
@@ -106,7 +105,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     ${GLM_INCLUDE_DIR}
     ${ASSIMP_INCLUDE_DIR}
     ${SDL2_INCLUDE_DIR}
-    ${IMGUI_INCLUDE_DIR}
     ${PHYSX_ROOT}/include
 )
 

@@ -123,7 +123,8 @@ void DeferredRenderer::bindPointShadowUniforms(
 
 void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
 {
-    const Registry& registry = ctx.scene->GetRegistry();
+    const Scene* scene = ctx.scene;
+    const Registry& registry = scene->GetRegistry();
     auto geomShader = assetManager.getShader(ShaderRegistry::GEOMETRY);
 
     opaqueQueue.Clear();
@@ -176,6 +177,8 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
             if (!anim.finalBoneMatrices.empty()
                 && !mesh->bonePalette.empty())
             {
+                DEBUG_LOG("has finalBoneMatrices & mesh.ponePallete");
+
                 item.hasSkeleton = true;
                 item.boneMatrices = &anim.finalBoneMatrices;
                 item.bonePalette = &mesh->bonePalette;

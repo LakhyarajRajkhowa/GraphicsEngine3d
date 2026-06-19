@@ -111,6 +111,7 @@ void PhysicsSystem::Shutdown()
 void PhysicsSystem::UpdateRuntime(float dt, ComponentStorage<TransformComponent>& transforms)
 {
     flushPending();
+    updateKinematicBodies(dt);
     physxScene->simulate(dt);
     physxScene->fetchResults(true);
     updateTransforms(transforms);
@@ -393,6 +394,42 @@ void PhysicsSystem::updateTransforms(ComponentStorage<TransformComponent>& trans
     }
 }
 
+// - update psoitions of all kinematic bodies
+void PhysicsSystem::updateKinematicBodies(float dt)
+{
+    if (!registry) return;
+
+    auto& entities = registry->rigidBodies.GetEntities();
+    auto& dense = registry->rigidBodies.GetDense();
+
+    for (size_t i = 0; i < dense.size(); ++i)
+    {
+        Entity entity = entities[i];
+        auto& rb = dense[i];
+
+        if (!rb.isKinematic)
+            continue;
+
+        if (!registry->transforms.Has(entity))
+            continue;
+
+        auto& transform = registry->transforms.Get(entity);
+
+        glm::vec3 currentPos = transform.GetWorldPosition();
+        glm::quat currentRot = transform.GetWorldRotation();
+
+        glm::vec3 targetPos =
+            currentPos +
+            rb.linearVelocity * dt;
+
+        MoveKinematic(
+            entity,
+            targetPos,
+            currentRot
+        );
+    }
+}
+
 
 
 void PhysicsSystem::createGroundPlane()
@@ -630,15 +667,20 @@ void PhysicsSystem::SetAngularLock(Entity e, bool x, bool y, bool z)
 
 void PhysicsSystem::SetLinearVelocity(Entity e, glm::vec3 v)
 {
-    if (!registry->rigidBodies.Has(e)) return;
+    if (!registry->rigidBodies.Has(e))
+        return;
+
     auto& rb = registry->rigidBodies.Get(e);
+
     rb.linearVelocity = v;
     rb.dirty = true;
 
     PxRigidDynamic* dyn = getDynamicActor(e);
-    if (!dyn) return;
-    if (dyn->getRigidBodyFlags().isSet(PxRigidBodyFlag::eKINEMATIC)) return;
-    dyn->setLinearVelocity(PxVec3(v.x, v.y, v.z));
+    if (!dyn)
+        return;
+
+    if (!rb.isKinematic)
+        dyn->setLinearVelocity(PxVec3(v.x, v.y, v.z));
 }
 
 void PhysicsSystem::SetAngularVelocity(Entity e, glm::vec3 v)
@@ -656,8 +698,18 @@ void PhysicsSystem::SetAngularVelocity(Entity e, glm::vec3 v)
 
 glm::vec3 PhysicsSystem::GetLinearVelocity(Entity e) const
 {
+    if (!registry->rigidBodies.Has(e))
+        return glm::vec3(0.0f);
+
+    const auto& rb = registry->rigidBodies.Get(e);
+
+    if (rb.isKinematic)
+        return rb.linearVelocity;
+
     PxRigidDynamic* dyn = getDynamicActor(e);
-    if (!dyn) return glm::vec3(0.0f);
+    if (!dyn)
+        return glm::vec3(0.0f);
+
     PxVec3 v = dyn->getLinearVelocity();
     return { v.x, v.y, v.z };
 }
