@@ -33,6 +33,7 @@ namespace Lengine {
 
         Skeleton() = default;
 
+
         // metadata
         UUID skeletonID;
         std::string name;

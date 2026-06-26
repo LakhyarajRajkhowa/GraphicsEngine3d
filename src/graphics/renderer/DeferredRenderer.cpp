@@ -177,7 +177,6 @@ void DeferredRenderer::RenderGeometry(const RenderContext& ctx)
             if (!anim.finalBoneMatrices.empty()
                 && !mesh->bonePalette.empty())
             {
-                DEBUG_LOG("has finalBoneMatrices & mesh.ponePallete");
 
                 item.hasSkeleton = true;
                 item.boneMatrices = &anim.finalBoneMatrices;

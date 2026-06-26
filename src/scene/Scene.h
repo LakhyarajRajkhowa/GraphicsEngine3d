@@ -161,6 +161,12 @@ namespace Lengine {
             return id;
         }
 
+        // Create entity twin in the heirarchy
+        Entity DuplicateEntity(Entity original);
+        bool IsDescendantOf(Entity potentialAncestor, Entity entity);
+      
+
+
 
     private:
         std::string name;

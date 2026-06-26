@@ -24,6 +24,8 @@ namespace Lengine {
 
         void OnCollisionEnter(Entity a, Entity b);
         void OnCollisionExit(Entity a, Entity b);
+        void OnTriggerEnter(Entity a, Entity b);
+        void OnTriggerExit(Entity a, Entity b);
 
         const ScriptLibrary& GetLibrary() const { return library; }
         ScriptLibrary& GetLibrary()  { return library; }

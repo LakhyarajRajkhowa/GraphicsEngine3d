@@ -57,6 +57,7 @@ namespace Lengine {
         RenderSettings& getRenderSettings();
         RuntimeStats& getRuntimeStats();
         PhysicsSystem& getPhysicsSystem();
+        BoneAttachmentSystem& getBoneAttachmentSystem();
         ScriptSystem& getScriptSystem();
 
         InputRouter& getInputRouter() { return inputRouter; }

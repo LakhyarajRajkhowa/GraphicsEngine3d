@@ -116,4 +116,33 @@ namespace Lengine {
         notify(b, a);
     }
 
+    void ScriptSystem::OnTriggerEnter(Entity a, Entity b)
+    {
+        auto& scene = sceneManager.GetRuntimeScene();
+        Registry& registry = scene->GetRegistry();
+
+        auto notify = [&](Entity self, Entity other) {
+            if (!registry.scripts.Has(self)) return;
+            for (auto& s : registry.scripts.Get(self).scripts)
+                if (s) s->OnTriggerEnter(other);
+            };
+
+        notify(a, b);
+        notify(b, a);
+    }
+
+    void ScriptSystem::OnTriggerExit(Entity a, Entity b)
+    {
+        auto& scene = sceneManager.GetRuntimeScene();
+        Registry& registry = scene->GetRegistry();
+
+        auto notify = [&](Entity self, Entity other) {
+            if (!registry.scripts.Has(self)) return;
+            for (auto& s : registry.scripts.Get(self).scripts)
+                if (s) s->OnTriggerExit(other);
+            };
+
+        notify(a, b);
+        notify(b, a);
+    }
 } // namespace Lengine

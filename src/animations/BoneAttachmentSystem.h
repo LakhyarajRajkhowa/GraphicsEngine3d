@@ -1,10 +1,12 @@
 #pragma once
 
+
 #include "scene/components/ComponentStorage.h"
 #include "scene/components/BoneAttachmentComponent.h"
 #include "scene/components/Transform.h"
 #include "scene/components/AnimationComponent.h"
 #include "scene/components/SkeletonComponent.h"
+#include "transform/TransformSystem.h"
 #include "resources/AssetManager.h"
 
 namespace Lengine
@@ -25,6 +27,15 @@ namespace Lengine
             ComponentStorage<SkeletonComponent>& skeletons,
             ComponentStorage<TransformComponent>& transforms
         );
+
+
+        bool TryGetBoneAttachedWorldMatrix(
+            const Entity& entity,
+            ComponentStorage<BoneAttachmentComponent>& attachments,
+            ComponentStorage<AnimationComponent>& animations,
+            ComponentStorage<SkeletonComponent>& skeletons,
+            ComponentStorage<TransformComponent>& transforms,
+            glm::mat4& outWorld);
 
 
     private:

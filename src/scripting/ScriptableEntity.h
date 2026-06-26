@@ -26,6 +26,8 @@ namespace Lengine {
         virtual void OnDestroy() {}
         virtual void OnCollisionEnter(Entity other) {}
         virtual void OnCollisionExit(Entity other) {}
+        virtual void OnTriggerEnter(Entity other) {}
+        virtual void OnTriggerExit(Entity other) {}
 
         Entity          entity;
         Scene&          scene;

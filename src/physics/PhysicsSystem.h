@@ -32,10 +32,12 @@ namespace Lengine {
     };
 
 
-    class PhysicsSystem
+    class PhysicsSystem : public PxSimulationEventCallback
     {
 
     public:
+        struct CollisionEvent { Entity a; Entity b; };
+        struct TriggerEvent { Entity a; Entity b; };
 
         static bool dirty;
 
@@ -85,6 +87,21 @@ namespace Lengine {
         void PutToSleep(Entity e);
         bool IsSleeping(Entity e) const;
 
+        void SetColliderTrigger(ColliderShape& shape, bool isTrigger);   // NEW
+
+        std::vector<CollisionEvent> ConsumeCollisionEnterEvents();       // NEW
+        std::vector<CollisionEvent> ConsumeCollisionExitEvents();        // NEW
+        std::vector<TriggerEvent>   ConsumeTriggerEnterEvents();         // NEW
+        std::vector<TriggerEvent>   ConsumeTriggerExitEvents();          // NEW
+
+        // PxSimulationEventCallback interface                          // NEW block
+        void onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs) override;
+        void onTrigger(PxTriggerPair* pairs, PxU32 count) override;
+        void onConstraintBreak(PxConstraintInfo*, PxU32) override {}
+        void onWake(PxActor**, PxU32) override {}
+        void onSleep(PxActor**, PxU32) override {}
+        void onAdvance(const PxRigidBody* const*, const PxTransform*, const PxU32) override {}
+
 
     private:
 
@@ -101,6 +118,11 @@ namespace Lengine {
         std::unordered_set<Entity> pendingColliderRemoved;
         std::unordered_set<Entity> pendingRigidbodyAdded;
         std::unordered_set<Entity> pendingRigidbodyRemoved;
+
+        std::vector<CollisionEvent> pendingCollisionEnter;   // NEW
+        std::vector<CollisionEvent> pendingCollisionExit;    // NEW
+        std::vector<TriggerEvent>   pendingTriggerEnter;     // NEW
+        std::vector<TriggerEvent>   pendingTriggerExit;      // NEW
 
         Registry* registry = nullptr;
 
@@ -122,7 +144,7 @@ namespace Lengine {
         void teardownRigidbody(Entity entity, ColliderComponent* col);
 
         void drainPendingCommands(Entity e, PxRigidDynamic* dyn, RigidbodyComponent& rb);
-       
+
 
         void syncRigidbodyProperties(PxRigidDynamic* actor, const RigidbodyComponent& rb);
 
@@ -150,3 +172,4 @@ namespace Lengine {
     }
 
 } // namespace Lengine
+

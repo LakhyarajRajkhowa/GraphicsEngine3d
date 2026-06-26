@@ -32,11 +32,15 @@ namespace Lengine {
         renderSettings.resolution_Y = settings.resolution_Y;
      
         std::vector<std::string> scenesTobeLoaded;
-        scenesTobeLoaded.push_back("TestScene");
+        scenesTobeLoaded.push_back("emptyScene");
 
         sceneManager.loadScenes(scenesTobeLoaded);
 
         assetManager.Init();
+
+        assetManager.LoadSceneAssetRegistry(Paths::GameAssetRegistryFolder +
+            sceneManager.GetEditorScene()->getName() +
+            "_assets.json");
 
         renderPipeline.Init();
 
@@ -74,10 +78,17 @@ namespace Lengine {
         controllerSystem.Update(deltaTime);
         movementSystem.Update(deltaTime);
         animationSystem.Update(registry.animations, registry.skeletons, deltaTime);
-        boneSystem.Update(registry.boneAttachments, registry.animations, registry.skeletons, registry.transforms);
         physicsSystem.UpdateRuntime(deltaTime, registry.transforms);
-    }
 
+        for (auto& e : physicsSystem.ConsumeCollisionEnterEvents())
+            scriptSystem.OnCollisionEnter(e.a, e.b);
+        for (auto& e : physicsSystem.ConsumeCollisionExitEvents())
+            scriptSystem.OnCollisionExit(e.a, e.b);
+        for (auto& e : physicsSystem.ConsumeTriggerEnterEvents())
+            scriptSystem.OnTriggerEnter(e.a, e.b);
+        for (auto& e : physicsSystem.ConsumeTriggerExitEvents())
+            scriptSystem.OnTriggerExit(e.a, e.b);
+    }
 
     void EngineCore::pollEvents()
     {
@@ -124,30 +135,45 @@ namespace Lengine {
     void EngineCore::run(const EditorMode mode)
     {
         updateEssentials(mode);
+
         pollEvents();
+
 
 
         if (mode == EditorMode::PLAY)
         {
+            Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
+
             updateRuntime(mode);
 
-            Scene* runtimeScene = sceneManager.GetRuntimeScene().get();
             transformSystem.Update(
                 runtimeScene->GetRegistry().transforms,
                 runtimeScene->GetRegistry().hierarchies,
                 runtimeScene->GetRootEntities()
             );
+
+            boneSystem.Update(
+                runtimeScene->GetRegistry().boneAttachments,
+                runtimeScene->GetRegistry().animations,
+                runtimeScene->GetRegistry().skeletons,
+                runtimeScene->GetRegistry().transforms);
         }
         else
         {
             Scene* editorScene = sceneManager.GetEditorScene();
 
-
+   
             transformSystem.Update(
                 editorScene->GetRegistry().transforms,
                 editorScene->GetRegistry().hierarchies,
                 editorScene->GetRootEntities()
             );
+
+            boneSystem.Update(
+                editorScene->GetRegistry().boneAttachments,
+                editorScene->GetRegistry().animations,
+                editorScene->GetRegistry().skeletons,
+                editorScene->GetRegistry().transforms);
 
 
         }
@@ -160,7 +186,7 @@ namespace Lengine {
 
     void EngineCore::shutdown()
     {
-        assetManager.saveAssetDatabase();
+        assetManager.SaveAssetDatabase();
         physicsSystem.Shutdown();
 
         window.quitWindow();
@@ -217,6 +243,12 @@ namespace Lengine {
     {
         return physicsSystem;
     }
+
+    BoneAttachmentSystem& EngineCore::getBoneAttachmentSystem()
+    {
+        return boneSystem;
+    }
+
 
     ScriptSystem& EngineCore::getScriptSystem()
     {

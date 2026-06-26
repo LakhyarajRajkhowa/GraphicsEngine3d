@@ -42,7 +42,7 @@ namespace Lengine {
             return glm::vec3(worldMatrix[3]);
         }
 
-        glm::vec3 GetWorldScale()
+        glm::vec3 GetWorldScale() const
         {
             return {
                 glm::length(glm::vec3(worldMatrix[0])),

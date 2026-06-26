@@ -588,6 +588,7 @@ Entity AssetManager::InstantiatePrefab(
                     anim.tposeAnimationID = prefab.tposeAnimationID;
 
                     anim.finalBoneMatrices.resize(skeleton->bones.size(), glm::mat4(1.0f));
+                    anim.globalBoneTransforms.resize(skeleton->bones.size(), glm::mat4(1.0f));
 
                     std::vector<glm::mat4> globalTransforms(skeleton->bones.size());
 
@@ -615,8 +616,12 @@ Entity AssetManager::InstantiatePrefab(
                             ? localTransform
                             : globalTransforms[parent] * localTransform;
 
+                        // skinning matrix, used by the GPU skinning path
                         anim.finalBoneMatrices[i] = globalTransforms[i]
                             * skeleton->bones[i].inverseBindMatrix;
+
+
+                        anim.globalBoneTransforms[i] = globalTransforms[i];
                     }
                 }
             }
@@ -933,7 +938,254 @@ std::shared_ptr<GLSLProgram> AssetManager::getShader(const std::string& name)
     return it->second;
 }
 
-//          ----- ASSET REGISTRY -----
+
+//          ----- SCENE ASSET REGISTRY -----
+
+void AssetManager::SaveSceneAssetRegistryForScene(const Scene& scene, const std::string& folderPath)
+{
+    namespace fs = std::filesystem;
+
+    fs::path dir(folderPath);
+    if (!fs::exists(dir))
+        fs::create_directories(dir);
+
+    std::string sceneName = scene.getName();
+    fs::path finalPath = dir / (sceneName + "_assets.json");
+
+    std::unordered_set<UUID> usedAssets;
+
+    const Registry& registry = scene.GetRegistry();
+    const auto& entities = scene.getEntities();
+
+    // ---- Collect every asset UUID directly referenced by entities ----
+    for (const auto& entityPtr : entities)
+    {
+        const Entity entityID = entityPtr;
+
+        if (registry.meshFilters.Has(entityID))
+        {
+            const MeshFilter& mf = registry.meshFilters.Get(entityID);
+            if (mf.meshID != UUID::Null)
+                usedAssets.insert(mf.meshID);
+        }
+
+        if (registry.meshRenderers.Has(entityID))
+        {
+            const MeshRenderer& mr = registry.meshRenderers.Get(entityID);
+            const MaterialInstance& inst = mr.inst;
+
+            if (inst.baseMaterial != UUID::Null)          usedAssets.insert(inst.baseMaterial);
+            if (inst.map_albedo.has_value())             usedAssets.insert(inst.map_albedo.value());
+            if (inst.map_normal.has_value())             usedAssets.insert(inst.map_normal.value());
+            if (inst.map_metallic.has_value())           usedAssets.insert(inst.map_metallic.value());
+            if (inst.map_roughness.has_value())          usedAssets.insert(inst.map_roughness.value());
+            if (inst.map_ao.has_value())                 usedAssets.insert(inst.map_ao.value());
+            if (inst.map_metallicRoughness.has_value())  usedAssets.insert(inst.map_metallicRoughness.value());
+        }
+
+        if (registry.skeletons.Has(entityID))
+        {
+            const SkeletonComponent& s = registry.skeletons.Get(entityID);
+            if (s.skeletonID != UUID::Null)
+                usedAssets.insert(s.skeletonID);
+        }
+
+        if (registry.animations.Has(entityID))
+        {
+            const auto& a = registry.animations.Get(entityID);
+
+            for (const auto& animID : a.animationIDs)
+                if (animID != UUID::Null)
+                    usedAssets.insert(animID);
+
+            if (a.tposeAnimationID != UUID::Null)
+                usedAssets.insert(a.tposeAnimationID);
+        }
+    }
+
+    // ---- Pull in texture deps owned by the *material asset* itself ----
+    // (an entity might only reference baseMaterial, with the material's own
+    // texture maps not overridden per-instance, so they won't show up above)
+    std::vector<UUID> materialDerivedAssets;
+    for (const UUID& assetID : usedAssets)
+    {
+        Material* mat = GetMaterial(assetID);
+        if (!mat) continue;
+
+        if (mat->map_albedo != UUID::Null)            materialDerivedAssets.push_back(mat->map_albedo);
+        if (mat->map_normal != UUID::Null)            materialDerivedAssets.push_back(mat->map_normal);
+        if (mat->map_metallic != UUID::Null)          materialDerivedAssets.push_back(mat->map_metallic);
+        if (mat->map_roughness != UUID::Null)         materialDerivedAssets.push_back(mat->map_roughness);
+        if (mat->map_ao != UUID::Null)                materialDerivedAssets.push_back(mat->map_ao);
+        if (mat->map_metallicRoughness != UUID::Null) materialDerivedAssets.push_back(mat->map_metallicRoughness);
+    }
+    for (const UUID& id : materialDerivedAssets)
+        usedAssets.insert(id);
+
+    // ---- Write registry JSON ----
+    json jRegistry;
+    jRegistry["scene"] = sceneName;
+    jRegistry["assets"] = json::array();
+
+    for (const UUID& assetID : usedAssets)
+    {
+        const AssetMetadata* meta = GetAssetMetaData(assetID);
+
+        json jAsset;
+        jAsset["uuid"] = assetID.toUint64();
+        jAsset["type"] = meta ? AssetTypeToString(meta->type) : AssetTypeToString(AssetType::Unknown);
+        jAsset["name"] = meta ? meta->name : std::string("<unknown>");
+        jAsset["libraryPath"] = meta ? meta->libraryPath.string() : std::string();
+
+        jRegistry["assets"].push_back(jAsset);
+    }
+
+    std::ofstream file(finalPath);
+    file << jRegistry.dump(4);
+
+    std::cout << "Saved asset registry for scene \"" << sceneName
+        << "\" at: " << finalPath
+        << " (" << usedAssets.size() << " assets)" << std::endl;
+}
+
+bool AssetManager::LoadSceneAssetRegistry(const std::string& filePath)
+{
+    namespace fs = std::filesystem;
+
+    fs::path path(filePath);
+
+    if (!fs::exists(path))
+    {
+        std::cerr << "Scene asset registry does not exist: " << filePath << "\n";
+        return false;
+    }
+
+    std::ifstream file(path);
+    if (!file.is_open())
+    {
+        std::cerr << "Failed to open scene asset registry: " << filePath << "\n";
+        return false;
+    }
+
+    json jRegistry;
+
+    try
+    {
+        file >> jRegistry;
+    }
+    catch (const json::exception& e)
+    {
+        std::cerr << "Invalid scene asset registry JSON: " << e.what() << "\n";
+        return false;
+    }
+
+    file.close();
+
+    if (!jRegistry.contains("assets"))
+    {
+        std::cerr << "Scene asset registry missing \"assets\" array: " << filePath << "\n";
+        return false;
+    }
+
+    std::string sceneName = jRegistry.value("scene", std::string("<unknown>"));
+
+    size_t loadedCount = 0;
+    size_t failedCount = 0;
+
+    for (const auto& jAsset : jRegistry["assets"])
+    {
+        UUID assetID;
+        AssetType type;
+
+        try
+        {
+            assetID = UUID(jAsset.at("uuid").get<uint64_t>());
+            type = StringToAssetType(jAsset.at("type"));
+        }
+        catch (const json::exception& e)
+        {
+            std::cerr << "Skipping malformed asset entry in registry \"" << sceneName
+                << "\": " << e.what() << std::endl;
+            failedCount++;
+            continue;
+        }
+
+        bool ok = false;
+
+        switch (type)
+        {
+        case AssetType::Mesh:
+            ok = GetSubmesh(assetID) != nullptr || LoadSubmesh(assetID);
+            break;
+
+        case AssetType::Material:
+            // LoadMaterial also queues up its texture map dependencies
+            // via pendingTextureRequests, so this cascades.
+            ok = GetMaterial(assetID) != nullptr || LoadMaterial(assetID);
+            break;
+
+        case AssetType::Skeleton:
+        {
+            ok = GetSkeleton(assetID) != nullptr || LoadSkeleton(assetID);
+
+            if (Skeleton* skeleton = GetSkeleton(assetID))
+            {
+                skeleton->BuildBoneNodeHierarchy();
+            }
+
+            break;
+        }
+
+        case AssetType::BoneMask:
+            ok = GetBoneMask(assetID) != nullptr || LoadBoneMask(assetID);
+            break;
+
+        case AssetType::Texture:
+            // Orphan textures (not pulled in via a material) are loaded
+            // directly to CPU here; they'll pick up a GPU upload on the
+            // next ProcessGpuUploads() pass once flagged LoadedToCPU.
+            if (getTexture(assetID))
+            {
+                ok = true;
+            }
+            else
+            {
+                auto img = LoadTexture(assetID);
+                if (img)
+                {
+                    auto tex = std::make_shared<GLTexture>();
+                    tex->imageCPU = std::move(img);
+                    tex->pendingGPUUpload = true;
+
+                    {
+                        std::lock_guard<std::mutex> lock(assetMutex);
+                        textures[assetID] = tex;
+                        assetStates[assetID] = AssetState::LoadedToCPU;
+                    }
+
+                    ok = true;
+                }
+            }
+            break;
+
+        case AssetType::Animation:
+            ok = GetAnimation(assetID) != nullptr || LoadAnimation(assetID);
+            break;
+
+        }
+
+        if (ok)
+            loadedCount++;
+        else
+            failedCount++;
+    }
+
+    std::cout << "Loaded scene asset registry \"" << sceneName << "\" from: "
+        << filePath << " (" << loadedCount << " loaded, "
+        << failedCount << " failed)" << std::endl;
+
+    return failedCount == 0;
+}
 
 // ASSET DATABASE
 
@@ -941,7 +1193,7 @@ void AssetManager::LoadAssetDatabase() {
     AssetDatabase::LoadDatabase();
 }
 
-void AssetManager::saveAssetDatabase() {
+void AssetManager::SaveAssetDatabase() {
     AssetDatabase::SaveDatabase();
 }
 
@@ -1093,6 +1345,48 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jSkeleton["finalMatrices"] = SaveMat4Array(s.finalMatrices);
             jEntity["skeleton"] = jSkeleton;
         }
+
+        // ---- Bone Attachment ----
+        if (registry.boneAttachments.Has(entityID))
+        {
+            const BoneAttachmentComponent& b =
+                registry.boneAttachments.Get(entityID);
+
+            json jBone;
+
+            jBone["modelRoot"] = b.modelRoot;
+            jBone["skinnedRoot"] = b.skinnedRoot;
+            jBone["boneIndex"] = b.boneIndex;
+            jBone["boneName"] = b.boneName;
+
+            // Offset Position
+            jBone["offsetPosition"] =
+            {
+                b.offset.position.x,
+                b.offset.position.y,
+                b.offset.position.z
+            };
+
+            // Offset Rotation (Quaternion)
+            jBone["offsetRotation"] =
+            {
+                b.offset.rotation.x,
+                b.offset.rotation.y,
+                b.offset.rotation.z,
+                b.offset.rotation.w
+            };
+
+            // Offset Scale
+            jBone["offsetScale"] =
+            {
+                b.offset.scale.x,
+                b.offset.scale.y,
+                b.offset.scale.z
+            };
+
+            jEntity["boneAttachment"] = jBone;
+        }
+
         if (registry.animations.Has(entityID))
         {
             const auto& a =
@@ -1149,6 +1443,9 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
 
             jAnim["finalBoneMatrices"] =
                 SaveMat4Array(a.finalBoneMatrices);
+
+            jAnim["globalBoneTransform"] =
+                SaveMat4Array(a.globalBoneTransforms);
 
 
             jAnim["controller"] =
@@ -1478,6 +1775,58 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                     registry.skeletons.Add(entityID, s);
                 }
 
+                if (jEntity.contains("boneAttachment"))
+                {
+                    const auto& jb = jEntity["boneAttachment"];
+
+                    BoneAttachmentComponent b;
+
+                    // These will be remapped later
+                    if (jb.contains("modelRoot"))
+                        b.modelRoot = Entity(jb["modelRoot"].get<uint64_t>());
+
+                    if (jb.contains("skinnedRoot"))
+                        b.skinnedRoot = Entity(jb["skinnedRoot"].get<uint64_t>());
+
+                    if (jb.contains("boneIndex"))
+                        b.boneIndex = jb["boneIndex"];
+
+                    if (jb.contains("boneName"))
+                        b.boneName = jb["boneName"].get<std::string>();
+                    if (jb.contains("offsetPosition"))
+                    {
+                        auto& p = jb["offsetPosition"];
+                        b.offset.position = glm::vec3(
+                            p[0].get<float>(),
+                            p[1].get<float>(),
+                            p[2].get<float>());
+                    }
+
+                    if (jb.contains("offsetRotation"))
+                    {
+                        auto& r = jb["offsetRotation"];
+                        b.offset.rotation = glm::quat(
+                            r[3].get<float>(), // w
+                            r[0].get<float>(), // x
+                            r[1].get<float>(), // y
+                            r[2].get<float>()  // z
+                        );
+                    }
+
+                    if (jb.contains("offsetScale"))
+                    {
+                        auto& s = jb["offsetScale"];
+                        b.offset.scale = glm::vec3(
+                            s[0].get<float>(),
+                            s[1].get<float>(),
+                            s[2].get<float>());
+                    }
+
+                    b.offset.RecalculateMatrix();
+
+                    registry.boneAttachments.Add(entityID, b);
+                }
+
                 if (jEntity.contains("animation"))
                 {
                     const auto& ja = jEntity.at("animation");
@@ -1554,6 +1903,15 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         a.finalBoneMatrices =
                             LoadMat4Array(
                                 ja["finalBoneMatrices"]
+                            );
+                    }
+
+
+                    if (ja.contains("globalBoneTransform"))
+                    {
+                        a.globalBoneTransforms =
+                            LoadMat4Array(
+                                ja["globalBoneTransform"]
                             );
                     }
 
@@ -1771,6 +2129,30 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
             auto& mf = scene->GetRegistry().meshFilters.Get(e);
 
             mf.rootParent = scene->GetRootParent(e);
+        }
+
+        // Remap BoneAttachment entity references
+        for (auto entity : scene->GetRegistry().boneAttachments.GetEntities())
+        {
+            auto& b = scene->GetRegistry().boneAttachments.Get(entity);
+
+            if (b.modelRoot != NullEntity)
+            {
+                auto it = idMap.find(b.modelRoot);
+                if (it != idMap.end())
+                    b.modelRoot = it->second;
+                else
+                    b.modelRoot = NullEntity;
+            }
+
+            if (b.skinnedRoot != NullEntity)
+            {
+                auto it = idMap.find(b.skinnedRoot);
+                if (it != idMap.end())
+                    b.skinnedRoot = it->second;
+                else
+                    b.skinnedRoot = NullEntity;
+            }
         }
 
         std::cout << "Loaded scene: " << scene->getName() << "\n";

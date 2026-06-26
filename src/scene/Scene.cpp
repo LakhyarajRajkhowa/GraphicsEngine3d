@@ -171,6 +171,12 @@ Entity Scene::copyEntityImmediate(
         );
     }
    
+    if (registry.boneAttachments.Has(originalEntityId)) {
+        registry.boneAttachments.Add(
+            entityId,
+            registry.boneAttachments.Get(originalEntityId)
+        );
+    }
 
     if (registry.controllers.Has(originalEntityId))
     {
@@ -363,9 +369,86 @@ Entity Scene::copyEntity(const Entity originalEntityId, Entity entityId)
     return entityId;
 }
 
+Entity Scene::DuplicateEntity(Entity original)
+{
+    Entity duplicate = copyEntityImmediate(NullEntity, original);
+
+    Entity parent = GetParent(original);
+
+    // Make sure duplicate has a hierarchy component
+    if (!registry.hierarchies.Has(duplicate))
+        registry.hierarchies.Add(duplicate);
+
+    auto& dupHierarchy = registry.hierarchies.Get(duplicate);
+    dupHierarchy.parent = parent;
+    dupHierarchy.children.clear();
+
+    if (parent != NullEntity)
+    {
+        auto& parentHierarchy = registry.hierarchies.Get(parent);
+
+        // Remove from root list (copyEntityImmediate adds it there)
+        std20::erase(rootEntities, duplicate);
+
+        // Insert immediately after original
+        auto it = std::find(
+            parentHierarchy.children.begin(),
+            parentHierarchy.children.end(),
+            original);
+
+        if (it != parentHierarchy.children.end())
+            parentHierarchy.children.insert(it + 1, duplicate);
+        else
+            parentHierarchy.children.push_back(duplicate);
+    }
+    else
+    {
+        // Root object
+        auto it = std::find(
+            rootEntities.begin(),
+            rootEntities.end(),
+            original);
+
+        if (it != rootEntities.end())
+        {
+            std20::erase(rootEntities, duplicate);
+            rootEntities.insert(it + 1, duplicate);
+        }
+    }
+
+    // Copy should have no children
+    registry.hierarchies.Get(duplicate).children.clear();
+
+    // If this entity is the root of a model,
+    // update the MeshFilter rootParent.
+    if (registry.meshFilters.Has(duplicate))
+    {
+        registry.meshFilters.Get(duplicate).rootParent =
+            GetRootParent(duplicate);
+    }
+
+    return duplicate;
+}
+
+
+bool Scene::IsDescendantOf(Entity potentialAncestor, Entity entity)
+{
+    Entity current = entity;
+    while (registry.hierarchies.Has(current))
+    {
+        Entity parent = registry.hierarchies.Get(current).parent;
+        if (parent == potentialAncestor)
+            return true;
+        if (parent == NullEntity)
+            break;
+        current = parent;
+    }
+    return false;
+}
 
 const Entity Scene::GetRootParent(const Entity& entityID) const
 {
+
     Entity currentID = entityID;
 
     while (registry.hierarchies.Has(currentID))

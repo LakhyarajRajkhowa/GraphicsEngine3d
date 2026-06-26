@@ -60,6 +60,27 @@ namespace Lengine {
             const ComponentStorage<HierarchyComponent>& hierarchys
         );
 
+        static void DecomposeTRS(const glm::mat4& m, glm::vec3& outPos, glm::quat& outRot, glm::vec3& outScale)
+        {
+            outPos = glm::vec3(m[3]);
+
+            glm::vec3 col0(m[0]);
+            glm::vec3 col1(m[1]);
+            glm::vec3 col2(m[2]);
+
+            outScale.x = glm::length(col0);
+            outScale.y = glm::length(col1);
+            outScale.z = glm::length(col2);
+
+            // avoid divide-by-zero on a degenerate/zero-scale axis
+            glm::mat3 rotMat(
+                outScale.x > 0.0f ? col0 / outScale.x : col0,
+                outScale.y > 0.0f ? col1 / outScale.y : col1,
+                outScale.z > 0.0f ? col2 / outScale.z : col2
+            );
+
+            outRot = glm::quat_cast(rotMat);
+        }
     private:
     };
 

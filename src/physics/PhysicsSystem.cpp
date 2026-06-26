@@ -1,3 +1,5 @@
+
+
 #include "PhysicsSystem.h"
 #include <iostream>
 
@@ -5,7 +7,18 @@ using namespace Lengine;
 
 bool PhysicsSystem::dirty = true;
 
-
+PxFilterFlags LengineFilterShader(PxFilterObjectAttributes attr0, PxFilterData fd0,
+    PxFilterObjectAttributes attr1, PxFilterData fd1,
+    PxPairFlags& pairFlags, const void*, PxU32)
+{
+    if (PxFilterObjectIsTrigger(attr0) || PxFilterObjectIsTrigger(attr1))
+    {
+        pairFlags = PxPairFlag::eTRIGGER_DEFAULT;
+        return PxFilterFlag::eDEFAULT;
+    }
+    pairFlags = PxPairFlag::eCONTACT_DEFAULT | PxPairFlag::eNOTIFY_TOUCH_FOUND | PxPairFlag::eNOTIFY_TOUCH_LOST;
+    return PxFilterFlag::eDEFAULT;
+}
 
 void PhysicsSystem::Init(Scene& scene)
 {
@@ -28,10 +41,10 @@ void PhysicsSystem::Init(Scene& scene)
     sceneDesc.gravity = PxVec3(0.f, -9.81f, 0.f);
     dispatcher = PxDefaultCpuDispatcherCreate(2);
     sceneDesc.cpuDispatcher = dispatcher;
-    sceneDesc.filterShader = PxDefaultSimulationFilterShader;
+    sceneDesc.filterShader = LengineFilterShader;        // was PxDefaultSimulationFilterShader
+    sceneDesc.simulationEventCallback = this;            // NEW
 
     physxScene = physics->createScene(sceneDesc);
-
     createGroundPlane();
     InitForScene(scene);
 }
@@ -86,7 +99,31 @@ void PhysicsSystem::InitForScene(Scene& scene)
 void PhysicsSystem::clearScene()
 {
     for (auto& [entity, actor] : actors)
-        if (actor->actor) physxScene->removeActor(*actor->actor);
+    {
+        if (!actor->actor) continue;
+
+        PxShape* shapes[32];
+        PxU32 count = actor->actor->getNbShapes();
+        count = (count > 32) ? 32 : count;
+        actor->actor->getShapes(shapes, count);
+
+        for (PxU32 i = 0; i < count; ++i)
+        {
+            actor->actor->detachShape(*shapes[i]);
+            shapes[i]->release();
+        }
+
+        // reset component-side pointers so a later buildColliderActor doesn't skip rebuilding
+        if (registry && registry->colliders.Has(entity))
+        {
+            auto& col = registry->colliders.Get(entity);
+            for (auto& shape : col.shapes)
+                shape.runtimeShape = nullptr;
+        }
+
+        physxScene->removeActor(*actor->actor);
+        actor->actor->release(); // also fixes the actor leak — it was never released before
+    }
 
     actors.clear();
     pendingColliderAdded.clear();
@@ -196,21 +233,26 @@ void PhysicsSystem::buildColliderActor(Entity entity, ColliderComponent& collide
             PxBoxGeometry geom(shape.size.x * ws.x * 0.5f,
                 shape.size.y * ws.y * 0.5f,
                 shape.size.z * ws.z * 0.5f);
-            shape.runtimeShape = physics->createShape(geom, *material);
+            shape.runtimeShape = physics->createShape(geom, *material, true);
         }
         else if (shape.type == ColliderShape::Type::Sphere)
         {
             float us = glm::max(ws.x, glm::max(ws.y, ws.z));
-            shape.runtimeShape = physics->createShape(PxSphereGeometry(shape.radius * us), *material);
+            shape.runtimeShape = physics->createShape(PxSphereGeometry(shape.radius * us), *material, true);
         }
         else if (shape.type == ColliderShape::Type::Capsule)
         {
             float rs = glm::max(ws.y, ws.z);
             PxCapsuleGeometry geom(shape.radius * rs, shape.height * ws.x * 0.5f);
-            shape.runtimeShape = physics->createShape(geom, *material);
+            shape.runtimeShape = physics->createShape(geom, *material, true);
         }
 
-        if (shape.runtimeShape) pxActor->attachShape(*shape.runtimeShape);
+        if (shape.runtimeShape)
+        {
+            shape.runtimeShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, !shape.isTrigger);
+            shape.runtimeShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, shape.isTrigger);
+            pxActor->attachShape(*shape.runtimeShape);
+        }
     }
 }
 
@@ -376,8 +418,8 @@ void PhysicsSystem::updateTransforms(ComponentStorage<TransformComponent>& trans
     {
         if (!pa->actor || !transforms.Has(entity)) continue;
         auto& t = transforms.Get(entity);
-
-        if (pa->type == PhysicsActor::Type::STATIC)
+        
+        if (pa->type == PhysicsActor::Type::STATIC || registry->boneAttachments.Has(entity))
         {
             glm::vec3 pos = t.GetWorldPosition();
             glm::quat rot = t.GetWorldRotation();
@@ -388,7 +430,7 @@ void PhysicsSystem::updateTransforms(ComponentStorage<TransformComponent>& trans
 
         PxTransform pose = pa->actor->getGlobalPose();
         t.localPosition = { pose.p.x, pose.p.y, pose.p.z };
-        t.localRotation = glm::quat(pose.q.w, pose.q.x, pose.q.y, pose.q.z );
+        t.localRotation = glm::quat(pose.q.w, pose.q.x, pose.q.y, pose.q.z);
         t.localDirty = true;
         t.worldDirty = true;
     }
@@ -805,4 +847,86 @@ bool PhysicsSystem::IsSleeping(Entity e) const
     PxRigidDynamic* dyn = getDynamicActor(e);
     if (!dyn) return true;
     return dyn->isSleeping();
+}
+
+void PhysicsSystem::SetColliderTrigger(ColliderShape& shape, bool isTrigger)
+{
+    if (!shape.runtimeShape) return;
+
+    if (isTrigger)
+    {
+        shape.runtimeShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, false);
+        shape.runtimeShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, true);
+    }
+    else
+    {
+        shape.runtimeShape->setFlag(PxShapeFlag::eTRIGGER_SHAPE, false);
+        shape.runtimeShape->setFlag(PxShapeFlag::eSIMULATION_SHAPE, true);
+    }
+}
+
+void PhysicsSystem::onContact(const PxContactPairHeader& pairHeader, const PxContactPair* pairs, PxU32 nbPairs)
+{
+
+    if (pairHeader.flags & (PxContactPairHeaderFlag::eREMOVED_ACTOR_0 | PxContactPairHeaderFlag::eREMOVED_ACTOR_1))
+        return;
+
+    Entity a = (Entity)(uint64_t)pairHeader.actors[0]->userData;
+    Entity b = (Entity)(uint64_t)pairHeader.actors[1]->userData;
+
+    for (PxU32 i = 0; i < nbPairs; ++i)
+    {
+
+        const PxContactPair& cp = pairs[i];
+        if (cp.events & PxPairFlag::eNOTIFY_TOUCH_FOUND)
+            pendingCollisionEnter.push_back({ a, b });
+        else if (cp.events & PxPairFlag::eNOTIFY_TOUCH_LOST)
+            pendingCollisionExit.push_back({ a, b });
+    }
+}
+
+void PhysicsSystem::onTrigger(PxTriggerPair* pairs, PxU32 count)
+{
+    for (PxU32 i = 0; i < count; ++i)
+    {
+        const PxTriggerPair& p = pairs[i];
+        if (p.flags & (PxTriggerPairFlag::eREMOVED_SHAPE_TRIGGER | PxTriggerPairFlag::eREMOVED_SHAPE_OTHER))
+            continue;
+
+        Entity triggerEntity = (Entity)(uint64_t)p.triggerActor->userData;
+        Entity otherEntity = (Entity)(uint64_t)p.otherActor->userData;
+
+        if (p.status == PxPairFlag::eNOTIFY_TOUCH_FOUND)
+            pendingTriggerEnter.push_back({ triggerEntity, otherEntity });
+        else if (p.status == PxPairFlag::eNOTIFY_TOUCH_LOST)
+            pendingTriggerExit.push_back({ triggerEntity, otherEntity });
+    }
+}
+
+std::vector<PhysicsSystem::CollisionEvent> PhysicsSystem::ConsumeCollisionEnterEvents()
+{
+    std::vector<CollisionEvent> events = std::move(pendingCollisionEnter);
+    pendingCollisionEnter.clear();
+    return events;
+}
+
+std::vector<PhysicsSystem::CollisionEvent> PhysicsSystem::ConsumeCollisionExitEvents()
+{
+    std::vector<CollisionEvent> events = std::move(pendingCollisionExit);
+    pendingCollisionExit.clear();
+    return events;
+}
+
+std::vector<PhysicsSystem::TriggerEvent> PhysicsSystem::ConsumeTriggerEnterEvents()
+{
+    std::vector<TriggerEvent> events = std::move(pendingTriggerEnter);
+    pendingTriggerEnter.clear();
+    return events;
+}
+
+std::vector<PhysicsSystem::TriggerEvent> PhysicsSystem::ConsumeTriggerExitEvents()
+{
+    std::vector<TriggerEvent> events = std::move(pendingTriggerExit);
+    pendingTriggerExit.clear();
+    return events;
 }

@@ -175,11 +175,12 @@ namespace Lengine {
 
 
 		// ASSET REGSISTRY
-
+		void SaveSceneAssetRegistryForScene(const Scene& scene, const std::string& folderPath);
+		bool LoadSceneAssetRegistry(const std::string& filePath);
 
 		// ASSET DATABASE
 		void LoadAssetDatabase();
-		void saveAssetDatabase();
+		void SaveAssetDatabase();
 
 		// SCENE
 		std::unique_ptr<Scene> createScene(const std::string& name, const std::string& folderPath);
