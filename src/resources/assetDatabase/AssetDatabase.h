@@ -3,16 +3,17 @@
 #include <filesystem>
 #include <iostream>
 
-#include "../utils/UUID.h"
-#include "../assets/AssetRegistry.h"
-#include "../assetDatabase/AssetSerializer.h"
-#include "../core/paths.h"
-#include "../external/json.hpp"
+#include "utils/UUID.h"
+#include "assets/AssetRegistry.h"
+#include "resources/assetDatabase/AssetSerializer.h"
+#include "core/paths.h"
+#include "external/json.hpp"
 
 #include "graphics/material/MaterialLoader.h"
 #include "resources/ImageLoader.h"
 #include "animations/Animator.h"
 #include "animations/BoneMask.h"
+#include "particles/ParticleEmitterAsset.h"
 
 namespace Lengine {
 
@@ -54,6 +55,12 @@ namespace Lengine {
     struct AssetTypeResolver<BoneMask>
     {
         static constexpr AssetType Type = AssetType::BoneMask;
+    };
+
+    template<>
+    struct AssetTypeResolver<ParticleEmitterAsset>
+    {
+        static constexpr AssetType Type = AssetType::ParticleEmitter;
     };
 }
 
@@ -140,6 +147,11 @@ namespace Lengine {
                 asset = LoadBoneMask(NormalizePath(meta->libraryPath.string()));
 
             }
+            else if constexpr (std::is_same_v<T, ParticleEmitterAsset>)
+            {
+                asset = LoadParticleEmitter(NormalizePath(meta->libraryPath.string()));
+
+            }
             else
             {
                 static_assert(false, "Unsupported asset type");
@@ -152,13 +164,13 @@ namespace Lengine {
 
 
         static const std::unordered_map<UUID, AssetMetadata>& GetAllAssets() { return s_Metadata; };
-        static bool needsUpdate;
-    
+        static bool needsUpdate; 
+        static  AssetMetadata* GetMetadata(const UUID& id);
+
     private:
         static std::unordered_map<UUID, AssetMetadata> s_Metadata;
         static std::unordered_map<UUID, std::shared_ptr<void>> s_LoadedAssets;
     private:
-        static const AssetMetadata* GetMetadata(const UUID& id);
 
 
         static std::mutex s_AssetMutex;

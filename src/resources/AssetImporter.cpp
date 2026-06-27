@@ -715,6 +715,7 @@ Prefab* PrefabImporter::Import(const std::filesystem::path& assetPath, UUID sour
         std::filesystem::create_directories(outSkeletonDir);
 
         skeletonID = UUID();
+        skeleton.skeletonID = skeletonID;
 
         SkeletonImporter::ImportSkeleton(
             scene,

@@ -8,7 +8,7 @@ bool AssetDatabase::needsUpdate = true;
 std::mutex AssetDatabase::s_AssetMutex;
 
 
-const AssetMetadata* AssetDatabase::GetMetadata(const UUID& id)
+ AssetMetadata* AssetDatabase::GetMetadata(const UUID& id)
 {
     auto it = s_Metadata.find(id);
     if (it != s_Metadata.end())

@@ -112,6 +112,50 @@ namespace Lengine {
             }
         }
     };
+
+    class ParticleEmitterSaver
+    {
+    public:
+        static void Save(
+            const ParticleEmitterAsset& asset,
+            const std::filesystem::path& filepath)
+        {
+            std::ofstream file(filepath);
+
+            if (!file.is_open())
+                return;
+
+            file << "Name=" << asset.name << "\n";
+            file << "ID=" << (uint64_t)asset.id << "\n";
+            file << "TextureID=" << (uint64_t)asset.textureID << "\n";
+            file << "BlendMode=" << static_cast<int>(asset.blendMode) << "\n";
+
+            file << "\n";
+
+            file << "BurstCountMin=" << asset.burstCountMin << "\n";
+            file << "BurstCountMax=" << asset.burstCountMax << "\n";
+            file << "LifetimeMin=" << asset.lifetimeMin << "\n";
+            file << "LifetimeMax=" << asset.lifetimeMax << "\n";
+            file << "SpeedMin=" << asset.speedMin << "\n";
+            file << "SpeedMax=" << asset.speedMax << "\n";
+            file << "ConeAngleDeg=" << asset.coneAngleDeg << "\n";
+
+            file << "\n";
+
+            file << "SizeStart=" << asset.sizeStart << "\n";
+            file << "SizeEnd=" << asset.sizeEnd << "\n";
+
+            file << "ColorStart=" << asset.colorStart.r << "," << asset.colorStart.g << ","
+                << asset.colorStart.b << "," << asset.colorStart.a << "\n";
+            file << "ColorEnd=" << asset.colorEnd.r << "," << asset.colorEnd.g << ","
+                << asset.colorEnd.b << "," << asset.colorEnd.a << "\n";
+
+            file << "\n";
+
+            file << "Gravity=" << asset.gravity << "\n";
+            file << "Drag=" << asset.drag << "\n";
+        }
+    };
     
     class BoneMaskCreator
     {
@@ -151,6 +195,50 @@ namespace Lengine {
             meta.libraryPath = libPath;
             meta.sourcePath = "";
             meta.thumbnailPath = Paths::Icons + "bone_mask_icon.png";
+
+            AssetDatabase::RegisterAsset(meta);
+
+            return id;
+        }
+    };
+
+    class ParticleEmitterCreator
+    {
+    public:
+        static UUID Create(const std::string& name)
+        {
+            UUID id;
+
+            std::string finalName = name;
+
+            std::filesystem::path libPath =
+                Paths::GameLibrary_Assets_Particle + finalName + ".particle";
+
+            int counter = 1;
+
+            while (std::filesystem::exists(libPath))
+            {
+                finalName = name + "_" + std::to_string(counter++);
+
+                libPath =
+                    Paths::GameLibrary_Assets_Particle +
+                    finalName +
+                    ".particle";
+            }
+
+            ParticleEmitterAsset asset;
+            asset.id = id;
+            asset.name = finalName;
+
+            ParticleEmitterSaver::Save(asset, libPath);
+
+            AssetMetadata meta;
+            meta.uuid = id;
+            meta.name = finalName;
+            meta.type = AssetType::ParticleEmitter;
+            meta.libraryPath = libPath;
+            meta.sourcePath = "";
+            meta.thumbnailPath = Paths::Icons + "particle_icon.png";
 
             AssetDatabase::RegisterAsset(meta);
 

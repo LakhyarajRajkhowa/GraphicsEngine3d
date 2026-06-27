@@ -49,7 +49,7 @@ namespace Lengine
 
             Skeleton* skeleton = assetManager.GetSkeleton(sk.skeletonID);
 
-            if (!skeleton || attachment.boneIndex >= (int)skeleton->bones.size())
+            if (!skeleton || attachment.boneIndex >= (int)skeleton->bones.size() || attachment.boneIndex < 0)
                 continue;
 
             const glm::mat4& globalBoneTransform = anim.globalBoneTransforms[attachment.boneIndex];

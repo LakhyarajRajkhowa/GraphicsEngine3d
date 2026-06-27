@@ -11,13 +11,20 @@ namespace Lengine {
     class Scene;
     class InputManager;
     class PhysicsSystem;
+    class ParticleSystem;
     class AssetManager;
 
     class ScriptableEntity
     {
     public:
-        ScriptableEntity(Entity entity, Scene& scene, InputManager& input, PhysicsSystem& physics, AssetManager& assets)
-            : entity(entity), scene(scene), input(input) , physics(physics), assets(assets){}
+        ScriptableEntity(Entity entity,
+            Scene& scene,
+            InputManager& input,
+            PhysicsSystem& physics,
+            ParticleSystem& particles,
+            AssetManager& assets
+        )
+            : entity(entity), scene(scene), input(input) , physics(physics), particles(particles), assets(assets){}
 
         virtual ~ScriptableEntity() = default;
 
@@ -33,7 +40,8 @@ namespace Lengine {
         Scene&          scene;
         InputManager&   input;
         PhysicsSystem&  physics;
-        AssetManager& assets;
+        ParticleSystem& particles;
+        AssetManager&   assets;
     };
 
 } // namespace Lengine
@@ -77,9 +85,10 @@ namespace Lengine {
         Lengine::Scene&         scene,                                                   \
         Lengine::InputManager&  input,                                                  \
         Lengine::PhysicsSystem& physics,                                                    \
+        Lengine::ParticleSystem& particles,                                          \
         Lengine::AssetManager& assets)                                                     \
     {                                                                                     \
-        return new ClassName(entity, scene, input, physics, assets);                                    \
+        return new ClassName(entity, scene, input, physics, particles,  assets);                                    \
     }                                                                                     \
     static Lengine::Internal::ScriptRegistrar                                             \
         s_registrar_##ClassName(#ClassName, __FILE__);

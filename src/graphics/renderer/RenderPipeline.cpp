@@ -159,6 +159,13 @@ void RenderPipeline::BuildGraph()
                 )
             );
         }
+
+        renderGraph.AddPass(                          
+            std::make_unique<ParticlePass>(
+                particleSystem,
+                *hdrFramebuffer
+            )
+        );
     }
     else
     {
@@ -192,6 +199,13 @@ void RenderPipeline::BuildGraph()
             std::make_unique<ForwardTransparencyPass>(
                 forwardRenderer,
                 deferredRenderer.GetTransparentQueue(),
+                *hdrFramebuffer
+            )
+        );
+
+        renderGraph.AddPass(                          
+            std::make_unique<ParticlePass>(
+                particleSystem,
                 *hdrFramebuffer
             )
         );

@@ -18,6 +18,7 @@
 #include "utils/modelFileSystem.h"
 #include "utils/jsonHelper.h"
 #include "utils/C++20.h"
+#include "particles/ParticleEmitterAsset.h"
 #include "scene/Scene.h"
 #include "resources/TextureCache.h"
 #include "resources/AssetEditor.h"
@@ -72,8 +73,7 @@ namespace Lengine {
 		std::unordered_map<UUID, std::shared_ptr<Skeleton>> skeletons;
 		std::unordered_map<UUID, std::shared_ptr<Animation>> animations;
 		std::unordered_map<UUID, std::shared_ptr<BoneMask>> boneMasks;
-
-
+		std::unordered_map<UUID, std::shared_ptr<ParticleEmitterAsset>> particleEmitters;
 
 		TextureCache textureCache;
 		
@@ -94,6 +94,7 @@ namespace Lengine {
 
 		std::vector<AssetView> allAssetViews;
 		void UpdateAllAssetViews();
+		void UpdateAssetName(const UUID id, const std::string name);
 
 		std::vector<AssetView> submeshViews;
 		std::vector<AssetView> GetAllSubmeshFromDatabase() const { return submeshViews; }
@@ -113,6 +114,12 @@ namespace Lengine {
 		std::vector<AssetView> BoneMaskViews;
 		std::vector<AssetView> GetAllBoneMasksFromDatabase() const { return BoneMaskViews; }
 
+		std::vector<AssetView> AnimationViews;
+		std::vector<AssetView> GetAllAniamtionsFromDatabase() const { return AnimationViews; }
+
+		std::vector<AssetView> ParticleViews;
+		std::vector<AssetView> GetAllParticleEmittersFromDatabase() const { return ParticleViews; }
+
 		const AssetMetadata* GetAssetMetaData(const UUID& uuid) const;
 
 		// SUBMESH
@@ -130,6 +137,12 @@ namespace Lengine {
 		UUID CreateBoneMask(const std::string name);
 		std::shared_ptr<BoneMask> GetBoneMask(const UUID& id);
 		bool LoadBoneMask(const UUID& id);
+
+		// PARTICLE EMITTERAS
+		void SaveParticleEmitter(const UUID& id);
+		UUID CreateParticleEmitter(const std::string name);
+		std::shared_ptr<ParticleEmitterAsset> GetParticleEmitter(const UUID& id);
+		bool LoadParticleEmitter(const UUID& id);
 
 		// ANIMATIONS
 		bool LoadAnimation(const UUID& uuid);

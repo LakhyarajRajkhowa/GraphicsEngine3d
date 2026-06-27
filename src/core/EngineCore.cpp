@@ -13,13 +13,14 @@ namespace Lengine {
 
         sceneManager(assetManager, physicsSystem),
         assetManager(settings),
-        renderPipeline(assetManager),
+        renderPipeline(assetManager, particleSystem),
         animationSystem(assetManager),
         boneSystem(assetManager),
         inputRouter(inputManager),
         controllerSystem(sceneManager, inputManager),
         movementSystem(sceneManager),
-        scriptSystem(sceneManager, inputManager, physicsSystem, assetManager)
+        scriptSystem(sceneManager, inputManager, physicsSystem, particleSystem, assetManager),
+        particleSystem(assetManager)
 
     {
     }
@@ -50,6 +51,8 @@ namespace Lengine {
 
         boneSystem.Init(*sceneManager.GetEditorScene());
 
+        particleSystem.Init();
+
     }
 
     void EngineCore::updateEssentials(const EditorMode& mode)
@@ -79,6 +82,7 @@ namespace Lengine {
         movementSystem.Update(deltaTime);
         animationSystem.Update(registry.animations, registry.skeletons, deltaTime);
         physicsSystem.UpdateRuntime(deltaTime, registry.transforms);
+        particleSystem.Update(deltaTime);
 
         for (auto& e : physicsSystem.ConsumeCollisionEnterEvents())
             scriptSystem.OnCollisionEnter(e.a, e.b);
@@ -253,6 +257,11 @@ namespace Lengine {
     ScriptSystem& EngineCore::getScriptSystem()
     {
         return scriptSystem;
+    }
+
+    ParticleSystem& EngineCore::getParticleSystem()
+    {
+        return particleSystem;
     }
 
 }

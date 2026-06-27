@@ -14,6 +14,7 @@
 #include "transform/TransformSystem.h"
 #include "physics/PhysicsSystem.h"
 #include "scripting/ScriptSystem.h"
+#include "particles/ParticleSystem.h"
 
 #include "input/InputManager.h"
 #include "input/InputContext.h"
@@ -59,6 +60,8 @@ namespace Lengine {
         PhysicsSystem& getPhysicsSystem();
         BoneAttachmentSystem& getBoneAttachmentSystem();
         ScriptSystem& getScriptSystem();
+        ParticleSystem& getParticleSystem();
+
 
         InputRouter& getInputRouter() { return inputRouter; }
 
@@ -89,6 +92,7 @@ namespace Lengine {
         ControllerSystem controllerSystem;
         MovementSystem movementSystem;
         ScriptSystem scriptSystem;
+        ParticleSystem particleSystem;
 
         InputRouter     inputRouter;      
 

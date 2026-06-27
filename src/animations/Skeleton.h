@@ -111,6 +111,27 @@ namespace Lengine {
                 }
             }
         }
+
+
+        static bool AreCompatible(const Skeleton& a, const Skeleton& b)
+        {
+            if (a.bones.size() != b.bones.size())
+                return false;
+
+            for (size_t i = 0; i < a.bones.size(); i++)
+            {
+                const auto& boneA = a.bones[i];
+                const auto& boneB = b.bones[i];
+
+                if (boneA.name != boneB.name)
+                    return false;
+
+                if (boneA.parentIndex != boneB.parentIndex)
+                    return false;
+            }
+
+            return true;
+        }
     };
 
     static std::shared_ptr<Skeleton> ReadSkeleton(const std::filesystem::path& path)
@@ -164,4 +185,5 @@ namespace Lengine {
 
         return skeleton;
     }
+
 }

@@ -23,7 +23,8 @@ namespace Lengine {
         Skeleton = 7,
         Animation = 8,
         BoneMask = 9,
-        count = 10
+        ParticleEmitter = 10,
+        count = 11
     };
 
     enum class TextureMapType {
@@ -71,6 +72,8 @@ namespace Lengine {
         case AssetType::Skeleton:        return "Skeleton";
         case AssetType::Animation:       return "Animation";
         case AssetType::BoneMask:        return "BoneMask";
+        case AssetType::ParticleEmitter: return "ParticleEmitter";
+
 
         default: return "Unknown";
         }
@@ -88,7 +91,7 @@ namespace Lengine {
         if (str == "Skeleton")       return AssetType::Skeleton;
         if (str == "Animation")      return AssetType::Animation;
         if (str == "BoneMask")       return AssetType::BoneMask;
-
+        if (str == "ParticleEmitter")return AssetType::ParticleEmitter;
 
         return AssetType::Unknown;
     }

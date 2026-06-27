@@ -21,6 +21,8 @@ void AssetManager::LoadAllDefaultAssets() {
         loadShader(shader.name, shader.vertexShaderPath, shader.fragmentShaderPath);
     }
 
+    LoadParticleEmitter(UUID(3933919781052959133));
+
     for (auto asset : AssetDatabase::GetAllAssets()) {
         if (asset.second.type == AssetType::Texture) {
             texturePathToUUID[asset.second.sourcePath.string()] = asset.second.uuid;
@@ -49,6 +51,8 @@ void AssetManager::UpdateAllAssetViews()
     PrefabViews.clear();
     SkeletonViews.clear();
     BoneMaskViews.clear();
+    AnimationViews.clear();
+    ParticleViews.clear();
 
     const auto& allAssets = AssetDatabase::GetAllAssets();
 
@@ -83,6 +87,12 @@ void AssetManager::UpdateAllAssetViews()
         case AssetType::BoneMask:
             BoneMaskViews.emplace_back(view);
             break;
+        case AssetType::Animation:
+            AnimationViews.emplace_back(view);
+            break;
+        case AssetType::ParticleEmitter:
+            ParticleViews.emplace_back(view);
+            break;
 
         default:
             break;
@@ -92,6 +102,15 @@ void AssetManager::UpdateAllAssetViews()
     AssetDatabase::needsUpdate = false;
 }
 
+void AssetManager::UpdateAssetName(const UUID id, const std::string name)
+{
+    if (auto* oldData = AssetDatabase::GetMetadata(id))
+    {
+        oldData->name = name;
+
+        AssetDatabase::needsUpdate = true;
+    }
+}
 //  ---- SUBMESH ---
 
 void AssetManager::RequestSubmeshLoad(const UUID& meshID, const Entity& entityID)
@@ -173,6 +192,7 @@ Skeleton* AssetManager::GetSkeleton(const UUID& id) {
 
 
 // -------- BONEMASK ---------
+
 UUID AssetManager::CreateBoneMask(const std::string name) {
     return BoneMaskCreator::Create(name);
 }
@@ -205,6 +225,43 @@ bool AssetManager::LoadBoneMask(const UUID& id) {
 
     }
     else 
+        return false;
+}
+
+
+// -------- PARTICLE EMITTER ---------
+UUID AssetManager::CreateParticleEmitter(const std::string name) {
+    return ParticleEmitterCreator::Create(name);
+}
+
+void AssetManager::SaveParticleEmitter(const UUID& id) {
+    const ParticleEmitterAsset& pe = *GetParticleEmitter(id);
+    const std::filesystem::path libPath = GetAssetMetaData(id)->libraryPath;
+
+    ParticleEmitterSaver::Save(pe, libPath);
+}
+
+std::shared_ptr<ParticleEmitterAsset> AssetManager::GetParticleEmitter(const UUID& id)
+{
+    auto it = particleEmitters.find(id);
+    if (it == particleEmitters.end())
+        return nullptr;
+
+    return it->second;
+}
+
+bool AssetManager::LoadParticleEmitter(const UUID& id) {
+
+    if (GetParticleEmitter(id)) return true;
+
+    auto bm = AssetDatabase::LoadAsset<ParticleEmitterAsset>(id);
+
+    if (bm) {
+        particleEmitters[id] = bm;
+        return true;
+
+    }
+    else
         return false;
 }
 
@@ -1281,11 +1338,65 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jEntity["meshFilter"] = jMeshFilter;
         }
 
-        if (registry.meshRenderers.Has(entityID)) {
+        if (registry.meshRenderers.Has(entityID))
+        {
             const MeshRenderer& mr = registry.meshRenderers.Get(entityID);
-
             json jMeshRenderer;
             jMeshRenderer["materialID"] = mr.inst.baseMaterial.toUint64();
+
+            // --- Serialize material instance overrides ---
+            json jOverrides;
+
+            if (mr.inst.albedo)
+                jOverrides["albedo"] = { mr.inst.albedo->x, mr.inst.albedo->y, mr.inst.albedo->z };
+
+            if (mr.inst.metallic)
+                jOverrides["metallic"] = *mr.inst.metallic;
+
+            if (mr.inst.roughness)
+                jOverrides["roughness"] = *mr.inst.roughness;
+
+            if (mr.inst.ao)
+                jOverrides["ao"] = *mr.inst.ao;
+
+            if (mr.inst.opacity)
+                jOverrides["opacity"] = *mr.inst.opacity;
+
+            if (mr.inst.normalStrength)
+                jOverrides["normalStrength"] = *mr.inst.normalStrength;
+
+            if (mr.inst.map_albedo)
+                jOverrides["map_albedo"] = mr.inst.map_albedo->toUint64();
+
+            if (mr.inst.map_normal)
+                jOverrides["map_normal"] = mr.inst.map_normal->toUint64();
+
+            if (mr.inst.map_metallic)
+                jOverrides["map_metallic"] = mr.inst.map_metallic->toUint64();
+
+            if (mr.inst.map_roughness)
+                jOverrides["map_roughness"] = mr.inst.map_roughness->toUint64();
+
+            if (mr.inst.map_ao)
+                jOverrides["map_ao"] = mr.inst.map_ao->toUint64();
+
+            if (mr.inst.map_metallicRoughness)
+                jOverrides["map_metallicRoughness"] = mr.inst.map_metallicRoughness->toUint64();
+
+            // use_map_* toggles (always written - they're plain bools, not optional)
+            jOverrides["use_map_albedo"] = mr.inst.use_map_albedo;
+            jOverrides["use_map_normal"] = mr.inst.use_map_normal;
+            jOverrides["use_map_metallic"] = mr.inst.use_map_metallic;
+            jOverrides["use_map_roughness"] = mr.inst.use_map_roughness;
+            jOverrides["use_map_ao"] = mr.inst.use_map_ao;
+            jOverrides["use_map_metallicRoughness"] = mr.inst.use_map_metallicRoughness;
+
+            jMeshRenderer["materialOverrides"] = jOverrides;
+
+            jMeshRenderer["castShadows"] = mr.castShadows;
+            jMeshRenderer["receiveShadows"] = mr.receiveShadows;
+            jMeshRenderer["render"] = mr.render;
+
             jEntity["meshRenderer"] = jMeshRenderer;
         }
 
@@ -1691,7 +1802,72 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                 if (jEntity.contains("meshRenderer"))
                 {
                     MeshRenderer mr;
-                    mr.inst.baseMaterial = UUID(jEntity["meshRenderer"].at("materialID").get<uint64_t>());
+                    const auto& jmr = jEntity["meshRenderer"];
+
+                    mr.inst.baseMaterial = UUID(jmr.at("materialID").get<uint64_t>());
+                    mr.inst.dirty = true; // force ResolveMaterial to recompute on next use
+
+                    if (jmr.contains("materialOverrides"))
+                    {
+                        const auto& jOv = jmr["materialOverrides"];
+
+                        if (jOv.contains("albedo"))
+                        {
+                            auto a = jOv["albedo"];
+                            mr.inst.albedo = glm::vec3(a[0].get<float>(), a[1].get<float>(), a[2].get<float>());
+                        }
+
+                        if (jOv.contains("metallic"))
+                            mr.inst.metallic = jOv["metallic"].get<float>();
+
+                        if (jOv.contains("roughness"))
+                            mr.inst.roughness = jOv["roughness"].get<float>();
+
+                        if (jOv.contains("ao"))
+                            mr.inst.ao = jOv["ao"].get<float>();
+
+                        if (jOv.contains("opacity"))
+                            mr.inst.opacity = jOv["opacity"].get<float>();
+
+                        if (jOv.contains("normalStrength"))
+                            mr.inst.normalStrength = jOv["normalStrength"].get<float>();
+
+                        if (jOv.contains("map_albedo"))
+                            mr.inst.map_albedo = UUID(jOv["map_albedo"].get<uint64_t>());
+
+                        if (jOv.contains("map_normal"))
+                            mr.inst.map_normal = UUID(jOv["map_normal"].get<uint64_t>());
+
+                        if (jOv.contains("map_metallic"))
+                            mr.inst.map_metallic = UUID(jOv["map_metallic"].get<uint64_t>());
+
+                        if (jOv.contains("map_roughness"))
+                            mr.inst.map_roughness = UUID(jOv["map_roughness"].get<uint64_t>());
+
+                        if (jOv.contains("map_ao"))
+                            mr.inst.map_ao = UUID(jOv["map_ao"].get<uint64_t>());
+
+                        if (jOv.contains("map_metallicRoughness"))
+                            mr.inst.map_metallicRoughness = UUID(jOv["map_metallicRoughness"].get<uint64_t>());
+
+                        // use_map_* toggles - default to true if missing (matches in-class default)
+                        mr.inst.use_map_albedo = jOv.value("use_map_albedo", true);
+                        mr.inst.use_map_normal = jOv.value("use_map_normal", true);
+                        mr.inst.use_map_metallic = jOv.value("use_map_metallic", true);
+                        mr.inst.use_map_roughness = jOv.value("use_map_roughness", true);
+                        mr.inst.use_map_ao = jOv.value("use_map_ao", true);
+                        mr.inst.use_map_metallicRoughness = jOv.value("use_map_metallicRoughness", true);
+                    }
+
+                    if (jmr.contains("castShadows"))
+                        mr.castShadows = jmr["castShadows"].get<bool>();
+
+                    if (jmr.contains("receiveShadows"))
+                        mr.receiveShadows = jmr["receiveShadows"].get<bool>();
+
+                    if (jmr.contains("render"))
+                        mr.render = jmr["render"].get<bool>();
+
                     registry.meshRenderers.Add(entityID, mr);
                 }
 

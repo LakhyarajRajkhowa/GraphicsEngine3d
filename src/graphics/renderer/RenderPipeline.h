@@ -1,11 +1,12 @@
 #pragma once
 
-#include "../graphics/renderer/PostProcess/PostProcessing.h"
-#include "../graphics/geometry/HDREnvironment.h"
-#include "../graphics/frameBuffers/FrameBuffer.h"
-#include "../graphics/renderer/ForwardRenderer.h"
-#include "../graphics/renderer/DeferredRenderer.h"
+#include "graphics/renderer/PostProcess/PostProcessing.h"
+#include "graphics/geometry/HDREnvironment.h"
+#include "graphics/frameBuffers/FrameBuffer.h"
+#include "graphics/renderer/ForwardRenderer.h"
+#include "graphics/renderer/DeferredRenderer.h"
 
+#include "particles/ParticleSystem.h"
 
 namespace Lengine {
 
@@ -332,6 +333,31 @@ namespace Lengine {
 
     };
 
+
+    class ParticlePass : public RenderPass
+    {
+    public:
+        ParticlePass(ParticleSystem& particles_, Framebuffer& target_)
+            : particles(particles_), target(target_) {}
+
+        void Execute(RenderContext& ctx) override
+        {
+            target.Bind();
+
+            glEnable(GL_BLEND);
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+
+            particles.Render(ctx.cameraView, ctx.cameraProjection);
+
+            glDisable(GL_BLEND);
+
+            target.Unbind();
+        }
+
+    private:
+        ParticleSystem& particles;
+        Framebuffer& target;
+    };
    
 
 
@@ -367,12 +393,13 @@ namespace Lengine {
     class RenderPipeline
     {
     public:
-        RenderPipeline(AssetManager& assetManager_) :
+        RenderPipeline(AssetManager& assetManager_, ParticleSystem& particleSys_) :
             assetManager(assetManager_), 
             forwardRenderer(assetManager_),
             deferredRenderer(assetManager_),
             shadowMap(1024),
-            shadowCubemap(1024)
+            shadowCubemap(1024),
+            particleSystem(particleSys_)
         {}
         void Init();
         void Resize(uint32_t width, uint32_t height);
@@ -411,6 +438,7 @@ namespace Lengine {
 
     private:
         AssetManager& assetManager;
+        ParticleSystem& particleSystem;
 
         ForwardRenderer forwardRenderer;
         DeferredRenderer deferredRenderer;

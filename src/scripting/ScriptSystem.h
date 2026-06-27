@@ -10,7 +10,18 @@ namespace Lengine {
     class ScriptSystem
     {
     public:
-        ScriptSystem(SceneManager& scn, InputManager& input, PhysicsSystem& physics, AssetManager& assets) : sceneManager(scn), input(input) , physics(physics), assets(assets){}
+        ScriptSystem(
+            SceneManager& scn,
+            InputManager& input,
+            PhysicsSystem& physics,
+            ParticleSystem& particles,
+            AssetManager& assets
+        ) : sceneManager(scn),
+            input(input),
+            physics(physics),
+            particles(particles),
+            assets(assets)
+        {}
 
         void Init(const std::string& dllPath);
 
@@ -38,6 +49,7 @@ namespace Lengine {
         SceneManager& sceneManager;
         InputManager& input;
         PhysicsSystem& physics;
+        ParticleSystem& particles;
         AssetManager& assets;
 
         ScriptLibrary library;
