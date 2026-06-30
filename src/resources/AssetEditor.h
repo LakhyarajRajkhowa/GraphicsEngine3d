@@ -150,6 +150,9 @@ namespace Lengine {
             file << "ColorEnd=" << asset.colorEnd.r << "," << asset.colorEnd.g << ","
                 << asset.colorEnd.b << "," << asset.colorEnd.a << "\n";
 
+            file << "Brightness=" << asset.brightness.r << "," << asset.brightness.g << ","
+                << asset.brightness.b << "," << asset.brightness.a << "\n";
+
             file << "\n";
 
             file << "Gravity=" << asset.gravity << "\n";

@@ -32,12 +32,12 @@ namespace Lengine {
         renderSettings.resolution_X = settings.resolution_X;
         renderSettings.resolution_Y = settings.resolution_Y;
      
+        assetManager.Init();
+
         std::vector<std::string> scenesTobeLoaded;
         scenesTobeLoaded.push_back("emptyScene");
 
         sceneManager.loadScenes(scenesTobeLoaded);
-
-        assetManager.Init();
 
         assetManager.LoadSceneAssetRegistry(Paths::GameAssetRegistryFolder +
             sceneManager.GetEditorScene()->getName() +

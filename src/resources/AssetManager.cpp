@@ -21,8 +21,13 @@ void AssetManager::LoadAllDefaultAssets() {
         loadShader(shader.name, shader.vertexShaderPath, shader.fragmentShaderPath);
     }
 
-    LoadParticleEmitter(UUID(3933919781052959133));
-
+    // for now load all particle emitter assets
+    for (auto asset : AssetDatabase::GetAllAssets()) {
+        if (asset.second.type == AssetType::ParticleEmitter) {
+            LoadParticleEmitter(asset.second.uuid);
+        }
+    }
+  
     for (auto asset : AssetDatabase::GetAllAssets()) {
         if (asset.second.type == AssetType::Texture) {
             texturePathToUUID[asset.second.sourcePath.string()] = asset.second.uuid;
@@ -254,10 +259,14 @@ bool AssetManager::LoadParticleEmitter(const UUID& id) {
 
     if (GetParticleEmitter(id)) return true;
 
-    auto bm = AssetDatabase::LoadAsset<ParticleEmitterAsset>(id);
+    auto pe = AssetDatabase::LoadAsset<ParticleEmitterAsset>(id);
 
-    if (bm) {
-        particleEmitters[id] = bm;
+    if (pe) {
+        // load tex
+        if (pe->textureID != UUID::Null) {
+            RequestTextureLoad(pe->textureID, UUID::Null, TextureMapType::Albedo);
+        }
+        particleEmitters[id] = pe;
         return true;
 
     }
@@ -646,6 +655,7 @@ Entity AssetManager::InstantiatePrefab(
 
                     anim.finalBoneMatrices.resize(skeleton->bones.size(), glm::mat4(1.0f));
                     anim.globalBoneTransforms.resize(skeleton->bones.size(), glm::mat4(1.0f));
+                    anim.tPose.Resize(skeleton->bones.size());
 
                     std::vector<glm::mat4> globalTransforms(skeleton->bones.size());
 
@@ -654,13 +664,19 @@ Entity AssetManager::InstantiatePrefab(
                         int       trackIndex = tposeClip->boneTrackMap[i];
                         glm::mat4 localTransform(1.0f);
 
+
+                        glm::vec3 pos = glm::vec3(0);
+                        glm::quat rot = glm::quat(1, 0, 0, 0);
+                        glm::vec3 scale = glm::vec3(1);
+
+
                         if (trackIndex != -1)
                         {
                             auto& track = tposeClip->tracks[trackIndex];
 
-                            glm::vec3 pos = track.positions.empty() ? glm::vec3(0) : track.positions[0].position;
-                            glm::quat rot = track.rotations.empty() ? glm::quat(1, 0, 0, 0) : track.rotations[0].rotation;
-                            glm::vec3 scale = track.scales.empty() ? glm::vec3(1) : track.scales[0].scale;
+                             pos = track.positions.empty() ? glm::vec3(0) : track.positions[0].position;
+                             rot = track.rotations.empty() ? glm::quat(1, 0, 0, 0) : track.rotations[0].rotation;
+                             scale = track.scales.empty() ? glm::vec3(1) : track.scales[0].scale;
 
                             localTransform = glm::translate(glm::mat4(1.0f), pos)
                                 * glm::mat4_cast(rot)
@@ -679,8 +695,13 @@ Entity AssetManager::InstantiatePrefab(
 
 
                         anim.globalBoneTransforms[i] = globalTransforms[i];
+
+                        anim.tPose.bones[i] = { pos, rot, scale };
+
+
                     }
                 }
+
             }
         }
     
@@ -1529,36 +1550,6 @@ void AssetManager::saveScene(const Scene& scene, const std::string& folderPath)
             jAnim["animationNames"] = animNames;
 
 
-            auto SaveMat4Array =
-                [](const std::vector<glm::mat4>& mats)
-                {
-                    json arr = json::array();
-
-                    for (const auto& m : mats)
-                    {
-                        json mat = json::array();
-
-                        for (int i = 0; i < 4; i++)
-                        {
-                            for (int j = 0; j < 4; j++)
-                            {
-                                mat.push_back(m[i][j]);
-                            }
-                        }
-
-                        arr.push_back(mat);
-                    }
-
-                    return arr;
-                };
-
-            jAnim["finalBoneMatrices"] =
-                SaveMat4Array(a.finalBoneMatrices);
-
-            jAnim["globalBoneTransform"] =
-                SaveMat4Array(a.globalBoneTransforms);
-
-
             jAnim["controller"] =
                 AnimatorSerializer::Save(a.animator);
 
@@ -1926,8 +1917,9 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
 
                     SkeletonComponent s;
 
-                    if (js.contains("skeletonID"))
+                    if (js.contains("skeletonID")) {
                         s.skeletonID = UUID(js.at("skeletonID").get<uint64_t>());
+                    }
 
                     auto LoadMat4Array = [](const json& arr) {
                         std::vector<glm::mat4> mats;
@@ -2048,49 +2040,7 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         }
                     }
 
-                    auto LoadMat4Array =
-                        [](const json& arr)
-                        {
-                            std::vector<glm::mat4> mats;
-
-                            for (const auto& matJson : arr)
-                            {
-                                glm::mat4 m(1.0f);
-
-                                int index = 0;
-
-                                for (int i = 0; i < 4; i++)
-                                {
-                                    for (int j = 0; j < 4; j++)
-                                    {
-                                        m[i][j] =
-                                            matJson[index++];
-                                    }
-                                }
-
-                                mats.push_back(m);
-                            }
-
-                            return mats;
-                        };
-
-                    if (ja.contains("finalBoneMatrices"))
-                    {
-                        a.finalBoneMatrices =
-                            LoadMat4Array(
-                                ja["finalBoneMatrices"]
-                            );
-                    }
-
-
-                    if (ja.contains("globalBoneTransform"))
-                    {
-                        a.globalBoneTransforms =
-                            LoadMat4Array(
-                                ja["globalBoneTransform"]
-                            );
-                    }
-
+               
                     if (ja.contains("controller"))
                     {
                         AnimatorSerializer::Load(
@@ -2099,11 +2049,14 @@ std::unique_ptr<Scene> AssetManager::loadScene(const std::string& filePath)
                         );
                     }
 
-                    registry.animations.Add(
+                    auto& anim = registry.animations.Add(
                         entityID,
                         a
                     );
-             
+                    
+                    auto& skeleton = registry.skeletons.Get(entityID);
+                    const UUID skeletonID = skeleton.skeletonID;
+                    initAnimationComponentFromTpose(anim, skeletonID);
             
                 }
 
@@ -2668,4 +2621,67 @@ AssetType AssetManager::getAssetType(const UUID& id) {
     else if (meta->type == AssetType::Texture) return AssetType::Texture;
     else if (meta->type == AssetType::Mesh)    return AssetType::Mesh;
     else return AssetType::Unknown;
+}
+
+void AssetManager::initAnimationComponentFromTpose(
+    AnimationComponent& anim,
+    const UUID& skelID)
+{
+    if (anim.tposeAnimationID == UUID::Null) return;
+    
+
+    Skeleton* skeleton = GetSkeleton(skelID);
+
+    if (!skeleton) {
+      LoadSkeleton(skelID);
+      skeleton = GetSkeleton(skelID);
+      skeleton->BuildBoneNodeHierarchy();
+    }
+
+
+    Animation* tposeClip = GetAnimation(anim.tposeAnimationID);
+    if (!tposeClip && LoadAnimation(anim.tposeAnimationID))
+        tposeClip = GetAnimation(anim.tposeAnimationID);
+
+    if (!skeleton || !tposeClip) {
+        return;
+    } 
+
+
+
+    size_t boneCount = skeleton->bones.size();
+
+    anim.finalBoneMatrices.resize(boneCount, glm::mat4(1.0f));
+    anim.globalBoneTransforms.resize(boneCount, glm::mat4(1.0f));
+    anim.tPose.Resize(boneCount);
+
+    std::vector<glm::mat4> globalTransforms(boneCount);
+
+    for (size_t i = 0; i < boneCount; i++)
+    {
+        int trackIndex = tposeClip->boneTrackMap[i];
+
+        glm::vec3 pos = glm::vec3(0.0f);
+        glm::quat rot = glm::quat(1, 0, 0, 0);
+        glm::vec3 scale = glm::vec3(1.0f);
+
+        if (trackIndex != -1)
+        {
+            auto& track = tposeClip->tracks[trackIndex];
+            pos = track.positions.empty() ? glm::vec3(0) : track.positions[0].position;
+            rot = track.rotations.empty() ? glm::quat(1, 0, 0, 0) : track.rotations[0].rotation;
+            scale = track.scales.empty() ? glm::vec3(1) : track.scales[0].scale;
+        }
+
+        glm::mat4 local = glm::translate(glm::mat4(1.0f), pos)
+            * glm::mat4_cast(rot)
+            * glm::scale(glm::mat4(1.0f), scale);
+
+        int parent = skeleton->bones[i].parentIndex;
+        globalTransforms[i] = (parent == -1) ? local : globalTransforms[parent] * local;
+
+        anim.finalBoneMatrices[i] = globalTransforms[i] * skeleton->bones[i].inverseBindMatrix;
+        anim.globalBoneTransforms[i] = globalTransforms[i];
+        anim.tPose.bones[i] = { pos, rot, scale };
+    }
 }

@@ -235,6 +235,11 @@ namespace Lengine {
 
 		const bool IsLoadingAssets() { return isLoadingAssets; }
 
+		void initAnimationComponentFromTpose(
+			AnimationComponent& anim,
+			const UUID& skelID
+		);
+
 	private:
 		EngineSettings& settings;
 

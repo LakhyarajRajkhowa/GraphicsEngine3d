@@ -9,6 +9,7 @@ namespace Lengine
     {
         std::vector<UUID> animationIDs;
         UUID tposeAnimationID;
+        Pose tPose;
         std::unordered_map<UUID, std::string> animationNames;
         std::unordered_map<std::string, UUID> animationNameToID;
 

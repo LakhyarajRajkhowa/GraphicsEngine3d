@@ -51,7 +51,7 @@ namespace Lengine
             size_t boneCount = skeleton->bones.size();
 
             currentFloatParams = &ctrl.floatParams;
-
+            currentTpose = &anim.tPose;       
 
             ctrl.CheckTransitions();
 
@@ -91,6 +91,7 @@ namespace Lengine
 
 
             currentFloatParams = nullptr;
+            currentTpose = nullptr;
         }
     }
 
@@ -118,6 +119,9 @@ namespace Lengine
 
         case BlendNodeType::Masked:
             return EvaluateMasked(ctrl, node, boneCount, dt);
+
+        case BlendNodeType::Additive:
+            return EvaluateAdditive(ctrl, node, boneCount, dt);
         }
 
         return Pose(boneCount);
@@ -349,6 +353,46 @@ namespace Lengine
         return BlendPoses(base, overlay, node.weight, &node.boneMask);
     }
 
+    Pose AnimationSystem::EvaluateAdditive(
+        AnimatorController& ctrl,
+        BlendNode& node,
+        size_t boneCount,
+        float dt)
+    {
+        Pose base = EvaluateNode(ctrl, node.baseNodeIndex, boneCount, dt);
+        Pose overlay = EvaluateNode(ctrl, node.overlayNodeIndex, boneCount, dt);
+
+        // Lazily capture the reference pose from the overlay clip the first time,
+        // or whenever the overlay node points at a Clip node we can sample directly.
+        if (!node.additiveReferenceCaptured)
+        {
+            BlendNode& overlayNode = ctrl.nodes[node.overlayNodeIndex];
+            BlendNode& base = ctrl.nodes[node.baseNodeIndex];
+
+            if (base.type == BlendNodeType::Clip)
+            {
+                Animation* clip = assetManager.GetAnimation(base.clipID);
+                if (clip)
+                {
+                    node.additiveReferencePose = SamplePose(*clip, node.additiveReferenceTime, boneCount);
+                    node.additiveReferenceCaptured = true;
+
+                    std::cout << "Captured additiv ereference\n";
+                }
+            }
+            else
+            {
+                // overlay isn't a simple clip (e.g. a blend tree) — fall back to
+                // sampling the live overlay pose once, which is the best available approximation
+                node.additiveReferencePose = overlay;
+                node.additiveReferenceCaptured = true;
+            }
+        }
+
+        return AdditivePoses(base, overlay, node.additiveReferencePose, node.weight,
+            node.boneMask.empty() ? nullptr : &node.boneMask);
+    }
+
     Pose AnimationSystem::SamplePose(Animation& animation, float time, size_t boneCount)
     {
         Pose pose(boneCount);
@@ -466,7 +510,5 @@ namespace Lengine
 
         return track.scales.back().scale;
     }
-
-
 
 }

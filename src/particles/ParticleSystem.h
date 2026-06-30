@@ -11,9 +11,22 @@
 
 namespace Lengine {
 
+    struct ParticleBatchKey {
+        UUID textureID = UUID::Null;
+        ParticleBlendMode blendMode;
+        bool operator==(const ParticleBatchKey& o) const {
+            return textureID == o.textureID && blendMode == o.blendMode;
+        }
+    };
+    struct ParticleBatchKeyHash {
+        size_t operator()(const ParticleBatchKey& k) const {
+            return std::hash<UUID>{}(k.textureID) ^ (static_cast<size_t>(k.blendMode) << 1);
+        }
+    };
+
     class ParticleSystem {
     public:
-        explicit ParticleSystem(AssetManager& assetManager, size_t maxParticles = 4096)
+        explicit ParticleSystem(AssetManager& assetManager, size_t maxParticles = 256)
             : assetManager(assetManager), pool(maxParticles) {}
 
         void Init();
@@ -35,6 +48,7 @@ namespace Lengine {
             glm::vec3 position;   // world position
             float     size;
             glm::vec4 color;
+            glm::vec4 brightness;
             float     rotation;
         };
 
@@ -56,6 +70,8 @@ namespace Lengine {
         static float RandRange(float lo, float hi);
         static int   RandRangeInt(int lo, int hi);
         static glm::vec3 RandomDirectionInCone(const glm::vec3& axis, float coneAngleDeg);
+
+        std::unordered_map<ParticleBatchKey, std::vector<InstanceData>, ParticleBatchKeyHash> batches;
     };
 
 }

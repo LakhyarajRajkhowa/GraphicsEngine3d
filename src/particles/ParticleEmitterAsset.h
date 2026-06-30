@@ -1,6 +1,5 @@
 #pragma once
 
-#include "utils/UUID.h"
 #include <glm/glm.hpp>
 #include <string>
 #include <sstream>
@@ -8,12 +7,11 @@
 #include <filesystem>
 #include <memory>
 
+#include "Particle.h"
+
+
 namespace Lengine {
 
-    enum class ParticleBlendMode {
-        AlphaBlend,
-        Additive
-    };
 
     struct ParticleEmitterAsset {
         UUID        id = UUID::Null;
@@ -38,6 +36,7 @@ namespace Lengine {
 
         glm::vec4 colorStart = { 0.5f, 0.0f, 0.0f, 1.0f };
         glm::vec4 colorEnd = { 0.2f, 0.0f, 0.0f, 0.0f };
+        glm::vec4 brightness = glm::vec4(1.0f);
 
         float gravity = -9.8f;
         float drag = 1.5f;
@@ -115,6 +114,9 @@ namespace Lengine {
 
         std::getline(file, line);
         asset->colorEnd = ParseVec4Csv(line.substr(line.find('=') + 1));
+
+        std::getline(file, line);
+        asset->brightness = ParseVec4Csv(line.substr(line.find('=') + 1));
 
         std::getline(file, line); // blank line
 

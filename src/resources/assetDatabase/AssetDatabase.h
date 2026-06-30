@@ -97,7 +97,7 @@ namespace Lengine {
             const AssetMetadata* meta = GetMetadata(id);
             if (!meta)
             {
-                std::cout << "[AssetDatabase] Invalid asset UUID\n";
+                std::cout << "[AssetDatabase] Invalid asset UUID : " << id << std::endl;;
                 return nullptr;
             }
 

@@ -203,18 +203,18 @@ void RenderPipeline::BuildGraph()
             )
         );
 
-        renderGraph.AddPass(                          
-            std::make_unique<ParticlePass>(
-                particleSystem,
-                *hdrFramebuffer
-            )
-        );
-
         //// Skybox after lighting
         renderGraph.AddPass(
             std::make_unique<SkyboxPass>(
                 *hdrFramebuffer,
                 hdrSkybox
+            )
+        );
+
+        renderGraph.AddPass(
+            std::make_unique<ParticlePass>(
+                particleSystem,
+                *hdrFramebuffer
             )
         );
     }

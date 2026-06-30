@@ -72,7 +72,6 @@ void ParticleSystem::Init() {
     // instance buffer — allocated empty, refilled with glBufferSubData each frame in Render()
     glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
     glBufferData(GL_ARRAY_BUFFER, pool.size() * sizeof(InstanceData), nullptr, GL_DYNAMIC_DRAW);
-
     // location 1: instance position (vec3) + size (float) packed as vec4
     glEnableVertexAttribArray(1);
     glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
@@ -85,15 +84,22 @@ void ParticleSystem::Init() {
         (void*)offsetof(InstanceData, color));
     glVertexAttribDivisor(2, 1);
 
-    // location 3: instance rotation (float)
+    // location 3: instance brightness (vec4)
     glEnableVertexAttribArray(3);
-    glVertexAttribPointer(3, 1, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
-        (void*)offsetof(InstanceData, rotation));
+    glVertexAttribPointer(3, 4, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
+        (void*)offsetof(InstanceData, brightness));
     glVertexAttribDivisor(3, 1);
+
+    // location 4: instance rotation (float)
+    glEnableVertexAttribArray(4);
+    glVertexAttribPointer(4, 1, GL_FLOAT, GL_FALSE, sizeof(InstanceData),
+        (void*)offsetof(InstanceData, rotation));
+    glVertexAttribDivisor(4, 1);
 
     glBindVertexArray(0);
 
     instanceScratch.reserve(pool.size());
+    
 }
 
 void ParticleSystem::SpawnBurst(
@@ -121,6 +127,7 @@ void ParticleSystem::SpawnBurst(
         p.colorStart = asset->colorStart;
         p.colorEnd = asset->colorEnd;
         p.color = asset->colorStart;
+        p.brightness = asset->brightness;
         p.sizeStart = asset->sizeStart;
         p.sizeEnd = asset->sizeEnd;
         p.size = asset->sizeStart;
@@ -130,6 +137,8 @@ void ParticleSystem::SpawnBurst(
         p.gravity = asset->gravity;
         p.drag = asset->drag;
         p.alive = true;
+        p.textureID = asset->textureID;
+        p.blendMode = asset->blendMode;
     }
 }
 
@@ -157,29 +166,59 @@ void ParticleSystem::Update(float dt) {
         ++aliveCount;
     }
 }
-
 void ParticleSystem::Render(const glm::mat4& view, const glm::mat4& projection) {
-    instanceScratch.clear();
+    batches.clear();
     for (const Particle& p : pool) {
         if (!p.alive) continue;
-        instanceScratch.push_back({ p.position, p.size, p.color, p.rotation });
+        batches[{ p.textureID, p.blendMode }].push_back(
+            { p.position, p.size, p.color, p.brightness, p.rotation, });
     }
-
-    if (instanceScratch.empty()) return;
-
-    glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
-    glBufferSubData(GL_ARRAY_BUFFER, 0,
-        instanceScratch.size() * sizeof(InstanceData),
-        instanceScratch.data());
+    if (batches.empty()) return;
 
     particleShader.use();
     particleShader.setMat4("view", view);
     particleShader.setMat4("projection", projection);
 
     glBindVertexArray(quadVAO);
-    glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instanceScratch.size());
+    glEnable(GL_BLEND);
+
+    for (auto& [key, instances] : batches) {
+        glBindBuffer(GL_ARRAY_BUFFER, instanceVBO);
+        glBufferSubData(GL_ARRAY_BUFFER, 0,
+            instances.size() * sizeof(InstanceData), instances.data());
+
+
+        switch (key.blendMode) {
+        case ParticleBlendMode::Additive:
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE);
+            break;
+        case ParticleBlendMode::NoBlend:
+            glBlendFunc(GL_SRC_ALPHA, GL_ZERO);
+            break;
+        case ParticleBlendMode::AlphaBlend:
+        default:
+            glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+            break;
+        }
+
+        bool hasTex = key.textureID != UUID::Null;
+        if (hasTex) {
+            if (auto tex = assetManager.getTexture(key.textureID)) {
+                glActiveTexture(GL_TEXTURE0);
+                glBindTexture(GL_TEXTURE_2D, tex->id); // adjust to your Texture wrapper's handle name
+                particleShader.setInt("particleTex", 0);
+            }
+            else {
+                hasTex = false;
+            }
+        }
+
+        particleShader.setBool("useTexture", hasTex);
+
+        glDrawArraysInstanced(GL_TRIANGLE_STRIP, 0, 4, (GLsizei)instances.size());
+    }
+
+    glDisable(GL_BLEND);
     glBindVertexArray(0);
-
-
     particleShader.unuse();
 }

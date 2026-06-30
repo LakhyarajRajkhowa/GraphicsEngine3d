@@ -18,7 +18,7 @@
 namespace Lengine
 {
 
-    enum class BlendNodeType { Clip, Blend1D, Blend2D, Masked };
+    enum class BlendNodeType { Clip, Blend1D, Blend2D, Masked, Additive };  
 
     struct BlendNode
     {
@@ -42,6 +42,7 @@ namespace Lengine
         float clipDuration = 1.0f;
 
         bool looping = true;
+
 
         // --- Blend1D Node ---
 
@@ -83,6 +84,12 @@ namespace Lengine
 
         std::vector<float> boneMask;
 
+        // --- Additive Node ---
+
+        Pose additiveReferencePose;      // captured from overlay clip at additiveReferenceTime
+        float additiveReferenceTime = 0.0f;   // which frame/time of overlay clip counts as "neutral"
+        bool additiveReferenceCaptured = false; // lazy-capture flag
+
         // Utility
 
         void AddEntry(UUID animID, float threshold)
@@ -119,6 +126,8 @@ namespace Lengine
 
             return normalisedClipTime >= exitTime;
         }
+
+      
 
         // Factory Functions
 
@@ -157,6 +166,17 @@ namespace Lengine
             n.baseNodeIndex = baseNodeIndex;
             n.overlayNodeIndex = overlayNodeIndex;
             n.boneMask = std::move(boneMask);
+            return n;
+        }
+
+        static BlendNode MakeAdditive(int baseNodeIndex, int overlayNodeIndex, std::vector<float> boneMask, float weight = 1.0f)
+        {
+            BlendNode n;
+            n.type = BlendNodeType::Additive;
+            n.baseNodeIndex = baseNodeIndex;
+            n.overlayNodeIndex = overlayNodeIndex;
+            n.boneMask = std::move(boneMask);
+            n.weight = weight;
             return n;
         }
     };
