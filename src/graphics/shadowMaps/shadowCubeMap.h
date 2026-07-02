@@ -21,9 +21,15 @@ namespace Lengine {
 			const std::vector<Entity> entities,
 			const ComponentStorage<TransformComponent>& trs,
 			const ComponentStorage<MeshFilter>& mfs,
+			const ComponentStorage<AnimationComponent>& anims,
 			const Entity& mainPointLight,
 			AssetManager& assetManager
 		);
+
+		unsigned int SHADOW_RES = 1024;
+
+		const float nearPlane = 0.01f;
+		const float farPlane = 1000.0f;
 
 	private:
 
@@ -32,10 +38,7 @@ namespace Lengine {
 		GLuint depthMapFBO = 0;
 		GLSLProgram depthCubeMapShader;
 
-		unsigned int SHADOW_RES = 1024;
-		
-		const float nearPlane = 1.0f;
-		const float farPlane = 25.0f;
+
 		glm::mat4 shadowProj;
 		std::vector<glm::mat4> shadowTransforms;
 

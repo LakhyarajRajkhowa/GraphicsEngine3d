@@ -58,6 +58,7 @@ void ShadowCubeMap::renderDepthCubeMap(
 	const std::vector<Entity> entities,
 	const ComponentStorage<TransformComponent>& trs,
 	const ComponentStorage<MeshFilter>& mfs,
+	const ComponentStorage<AnimationComponent>& anims,
 	const Entity& mainPointLight,
 	AssetManager& assetManager
 )
@@ -104,11 +105,46 @@ void ShadowCubeMap::renderDepthCubeMap(
 		auto& tr = trs.Get(e);
 		depthCubeMapShader.setMat4("model", tr.worldMatrix);
 		auto& mf = mfs.Get(e);
-
 		auto* mesh = assetManager.GetSubmesh(mf.meshID);
-		if (mesh) {
-			mesh->draw();
+
+		if (!mesh) continue;
+
+
+		bool hasSkeleton = false;
+		const AnimationComponent* anim = nullptr;
+		std::vector<glm::mat4> allBones;
+		std::vector<glm::mat4> bones;
+		std::vector<int> pallete;
+
+		if (anims.Has(mf.rootParent))
+		{
+			anim =
+				&anims.Get(mf.rootParent);
+
+			if (!anim->finalBoneMatrices.empty()
+				&& !mesh->bonePalette.empty())
+			{
+				hasSkeleton = true;
+				allBones = anim->finalBoneMatrices;
+				pallete = mesh->bonePalette;
+			}
 		}
+
+		if (hasSkeleton)
+		{
+			depthCubeMapShader.setBool("useSkeleton", hasSkeleton);
+
+			bones.resize(pallete.size());
+			for (size_t i = 0; i < pallete.size(); ++i)
+				bones[i] = allBones[pallete[i]];
+
+			for (int i = 0; i < (int)bones.size(); ++i)
+				depthCubeMapShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", bones[i]);
+		}
+
+
+		mesh->draw();
+		
 	}
 
 	depthCubeMapShader.unuse();

@@ -61,7 +61,7 @@ namespace Lengine
         return result;
     }
 
-    // TODO : Additive isnt working as expected
+    // TODO : Additive isn't working as expected
 
     inline Pose AdditivePoses(
         const Pose& base,
@@ -105,8 +105,7 @@ namespace Lengine
     {
         if (!any)
         {
-            // First contributing sample -- just take it directly,
-            // weighted by its own share (matters if it's not the only one).
+
             accum = sample;
             runningWeight = weight;
             any = true;
@@ -115,12 +114,6 @@ namespace Lengine
 
         runningWeight += weight;
 
-        // Re-normalized blend factor: blending `accum` (which already
-        // represents the weighted average of everything accumulated so
-        // far) toward `sample` by t = weight / runningWeight produces the
-        // correct overall weighted average, equivalent to doing it in one
-        // pass -- this is the same incremental-average trick used for
-        // online mean computation, applied per-bone.
         float t = weight / runningWeight;
 
         size_t boneCount = accum.bones.size();

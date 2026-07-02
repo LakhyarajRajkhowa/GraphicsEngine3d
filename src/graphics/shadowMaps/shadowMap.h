@@ -17,6 +17,7 @@ namespace Lengine {
 			const std::vector<Entity> entities,
 			const ComponentStorage<TransformComponent>& trs,
 			const ComponentStorage<MeshFilter>& mfs,
+			const ComponentStorage<AnimationComponent>& anims,
 			const Entity& mainDirectionalLight,
 			AssetManager& assetManager,
 			const glm::vec3& camPos
@@ -25,13 +26,15 @@ namespace Lengine {
 		const GLuint& getDepthTexture() { return shadowDepthTex; }
 
 		float nearPlane = 0.01f;
-		float farPlane = 1000.5f;
+		float farPlane = 1000.0f;
+		float frustumHalfExtent = 20.0f;
+		uint32_t SHADOW_RES = 1024;
+
 	private:
 
 		GLuint shadowFBO = 0;
 		GLuint shadowDepthTex = 0;
 
-		uint32_t SHADOW_RES = 1024;
 
 		GLSLProgram depthShader;
 

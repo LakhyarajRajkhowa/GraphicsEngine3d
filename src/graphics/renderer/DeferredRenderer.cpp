@@ -280,6 +280,12 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     shader->setMat3("envRotation", ctx.envRotation);
     shader->setInt("shadowMap", static_cast<unsigned int>(TextureUnit::Shadow2D));
     shader->setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
+    float shadowTexelWorldSize = (ctx.shadowContext.frustumHalfExtent * 2.0f) / static_cast<float>((ctx.shadowContext.shadowRes));
+    shader->setFloat("shadowTexelWorldSize", shadowTexelWorldSize);
+    shader->setFloat("nearPlane", (ctx.shadowContext.nearPlane));
+    shader->setFloat("farPlane", (ctx.shadowContext.farPlane));
+    shader->setFloat("farPlaneCubeMap", (ctx.shadowContext.farPlaneCubeMap));
+
 
     glActiveTexture(GL_TEXTURE0 + static_cast<unsigned int>(TextureUnit::Irradiance));
     glBindTexture(GL_TEXTURE_CUBE_MAP, ctx.irradianceMap.id);
@@ -295,7 +301,7 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     {
         bindShadowMapUniforms(
             *shader,
-            *ctx.shadowMap,
+            *ctx.shadowContext.shadowMap,
             registry.GetComponent<TransformComponent>(activeScene->GetDirectionalShadowCaster()),
             ctx.cameraPos
         );
@@ -304,7 +310,7 @@ void DeferredRenderer::RenderLighting(const RenderContext& ctx, const Framebuffe
     if (activeScene->GetPointShadowCaster() != UUID::Null
         && registry.HasComponent<TransformComponent>(activeScene->GetPointShadowCaster()))
     {
-        bindPointShadowUniforms(*shader, *ctx.shadowCubeMap);
+        bindPointShadowUniforms(*shader, *ctx.shadowContext.shadowCubeMap);
     }
 
     shader->setVec3("cameraPos", ctx.cameraPos);

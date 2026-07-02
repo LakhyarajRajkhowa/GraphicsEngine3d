@@ -102,8 +102,13 @@ uniform mat3 envRotation;
 
 // Shadow map
 uniform sampler2D shadowMap;
-uniform samplerCube shadowCubeMap;
+uniform float nearPlane;
 uniform float farPlane;
+uniform float shadowTexelWorldSize;
+
+// Shadow Cube map
+uniform samplerCube shadowCubeMap;
+uniform float farPlaneCubeMap;
 
 
 float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
@@ -119,7 +124,17 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     float closestDepth = texture(shadowMap, projCoords.xy).r;
     float currentDepth = projCoords.z;
 
-    float bias = max(0.01 * (1.0 - max(dot(normal, lightDir),0.0)), 0.001);
+    // slope scale in world units, grows at grazing angles
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float slope = clamp(sqrt(1.0 - NdotL * NdotL) / max(NdotL, 0.05), 0.0, 8.0);
+
+    // world-space bias: proportional to texel footprint, scaled by slope
+    float biasWorld = clamp(slope * shadowTexelWorldSize * 1.5,
+                             shadowTexelWorldSize * 0.5,
+                             shadowTexelWorldSize * 8.0);
+
+    // convert to NDC depth space using the actual frustum range
+    float bias = biasWorld / (farPlane - nearPlane);
 
     float shadow = 0.0;
 
@@ -136,6 +151,7 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
 
     return shadow;
 }
+
 vec3 sampleOffsetDirections[20] = vec3[](
    vec3( 1,  1,  1), vec3(-1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1),
    vec3( 1,  1, -1), vec3(-1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1),
@@ -149,7 +165,7 @@ float ShadowCubeMapCalculation(vec3 fragPos, vec3 lightPos)
     float currentDepth = length(fragToLight);
 
     float shadow = 0.0;
-    float bias = max(0.05 * (currentDepth / farPlane), 0.005);
+    float bias = max(0.05 * (currentDepth / farPlaneCubeMap), 0.005);
 
     int samples  = 20;
     float viewDistance = length(cameraPos - fragPos);
@@ -157,7 +173,7 @@ float ShadowCubeMapCalculation(vec3 fragPos, vec3 lightPos)
     for(int i = 0; i < samples; ++i)
     {
         float closestDepth = texture(shadowCubeMap, fragToLight + sampleOffsetDirections[i] * diskRadius).r;
-        closestDepth *= farPlane;   // undo mapping [0;1]
+        closestDepth *= farPlaneCubeMap;   // undo mapping [0;1]
         if(currentDepth - bias > closestDepth)
             shadow += 1.0;
     }

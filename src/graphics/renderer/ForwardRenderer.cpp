@@ -150,7 +150,6 @@ void ForwardRenderer::bindPointShadowUniforms(
     glBindTexture(GL_TEXTURE_CUBE_MAP, shadowCubeMap.getDepthCubeMap());
     shader.setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
 
-    shader.setFloat("farPlane", shadowCubeMap.getFarPlane());
 }
 
 
@@ -181,6 +180,12 @@ void ForwardRenderer::shadowMapPass(const RenderContext& ctx, std::shared_ptr<GL
     pbrShader->setInt("shadowMap", static_cast<unsigned int>(TextureUnit::Shadow2D));
     pbrShader->setInt("shadowCubeMap", static_cast<unsigned int>(TextureUnit::ShadowCube));
 
+    float shadowTexelWorldSize = (ctx.shadowContext.frustumHalfExtent * 2.0f) / static_cast<float>((ctx.shadowContext.shadowRes));
+    pbrShader->setFloat("shadowTexelWorldSize", shadowTexelWorldSize);
+    pbrShader->setFloat("nearPlane", (ctx.shadowContext.nearPlane));
+    pbrShader->setFloat("farPlane", (ctx.shadowContext.farPlane));
+    pbrShader->setFloat("farPlaneCubeMap", (ctx.shadowContext.farPlaneCubeMap));
+
 
 
     if (ctx.scene->GetDirectionalShadowCaster() != UUID::Null
@@ -188,7 +193,7 @@ void ForwardRenderer::shadowMapPass(const RenderContext& ctx, std::shared_ptr<GL
     {
         bindShadowMapUniforms(
             *pbrShader,
-            *ctx.shadowMap,
+            *ctx.shadowContext.shadowMap,
             registry.GetComponent<TransformComponent>(ctx.scene->GetDirectionalShadowCaster()),
             ctx.cameraPos
         );
@@ -197,7 +202,7 @@ void ForwardRenderer::shadowMapPass(const RenderContext& ctx, std::shared_ptr<GL
     if (ctx.scene->GetPointShadowCaster() != UUID::Null
         && registry.HasComponent<TransformComponent>(ctx.scene->GetPointShadowCaster()))
     {
-        bindPointShadowUniforms(*pbrShader, *ctx.shadowCubeMap);
+        bindPointShadowUniforms(*pbrShader, *ctx.shadowContext.shadowCubeMap);
     }
 }
 
@@ -282,7 +287,6 @@ void ForwardRenderer::CollectAndSort(const RenderContext& ctx)
         item.material = ResolveMaterial(*mat, mr.inst);
 
         
-        // TODO : instead of searching through the whole tree, find a better way to get the aniamtion
         if (registry.HasComponent<AnimationComponent>(mf.rootParent))
         {
             const AnimationComponent& anim =

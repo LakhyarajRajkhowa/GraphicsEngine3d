@@ -49,6 +49,7 @@ void ShadowMap::renderDepthMap(
     const std::vector<Entity> entities,
     const ComponentStorage<TransformComponent>& trs,
     const ComponentStorage<MeshFilter>& mfs,
+    const ComponentStorage<AnimationComponent>& anims,
     const Entity& mainDirectionalLight,
     AssetManager& assetManager,
     const glm::vec3& camPos
@@ -99,16 +100,52 @@ void ShadowMap::renderDepthMap(
 
     for (auto& e : entities)
     {
-        if (!trs.Has(e) || !mfs.Has(e) || e == mainDirectionalLight) continue;;
+        if (!trs.Has(e) || !mfs.Has(e) || e == mainDirectionalLight) continue;
 
         auto& tr = trs.Get(e);
-        depthShader.setMat4("model", tr.worldMatrix);
         auto& mf = mfs.Get(e);
+        auto& meshID = mf.meshID;
+        auto* mesh = assetManager.GetSubmesh(meshID);
 
-        auto* mesh = assetManager.GetSubmesh(mf.meshID);
-        if (mesh) {
-            mesh->draw();
+        if (!mesh) continue;
+
+        depthShader.setMat4("model", tr.worldMatrix);
+
+
+        bool hasSkeleton = false;
+        const AnimationComponent* anim = nullptr;
+        std::vector<glm::mat4> allBones;
+        std::vector<glm::mat4> bones;
+        std::vector<int> pallete;
+
+        if (anims.Has(mf.rootParent))
+        {
+            anim =
+                &anims.Get(mf.rootParent);
+
+            if (!anim->finalBoneMatrices.empty()
+                && !mesh->bonePalette.empty()) 
+            {
+                hasSkeleton = true;
+                allBones = anim->finalBoneMatrices;
+                pallete = mesh->bonePalette;
+            }
         }
+
+        if (hasSkeleton)
+        {
+            depthShader.setBool("useSkeleton", hasSkeleton);
+
+            bones.resize(pallete.size());
+            for (size_t i = 0; i < pallete.size(); ++i)
+                bones[i] = allBones[pallete[i]];
+
+            for (int i = 0; i < (int)bones.size(); ++i)
+                depthShader.setMat4("finalBonesMatrices[" + std::to_string(i) + "]", bones[i]);
+        }
+
+
+       mesh->draw();
     }
 
     depthShader.unuse();

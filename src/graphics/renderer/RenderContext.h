@@ -5,15 +5,27 @@
 #include "graphics/shadowMaps/shadowCubeMap.h"
 
 namespace Lengine {
+    struct ShadowContext {
+        ShadowMap* shadowMap;
+        ShadowCubeMap* shadowCubeMap;
+
+        float nearPlane;
+        float farPlane;
+        float frustumHalfExtent;
+
+        float farPlaneCubeMap;
+
+        uint32_t shadowRes;
+    };
+
     struct RenderContext {
         Scene* scene;
 
         glm::mat4 cameraView;
         glm::mat4 cameraProjection;
         glm::vec3 cameraPos;
-
-        ShadowMap* shadowMap;
-        ShadowCubeMap* shadowCubeMap;
+ 
+        struct ShadowContext shadowContext {};
 
         GLTexture irradianceMap;
         GLTexture prefilterMap;

@@ -36,6 +36,7 @@ namespace Lengine {
                 ctx.scene->getEntities(),
                 ctx.scene->GetRegistry().transforms,
                 ctx.scene->GetRegistry().meshFilters,
+                ctx.scene->GetRegistry().animations,
                 ctx.scene->GetDirectionalShadowCaster(),
                 assetManager,
                 ctx.cameraPos
@@ -46,6 +47,7 @@ namespace Lengine {
                 ctx.scene->getEntities(),
                 ctx.scene->GetRegistry().transforms,
                 ctx.scene->GetRegistry().meshFilters,
+                ctx.scene->GetRegistry().animations,
                 ctx.scene->GetPointShadowCaster(),
                 assetManager
             );

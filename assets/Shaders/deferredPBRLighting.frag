@@ -38,7 +38,9 @@ uniform mat3 envRotation;
 uniform sampler2D shadowMap;
 uniform samplerCube shadowCubeMap;
 uniform mat4 lightSpaceMatrix;
+uniform float nearPlane;
 uniform float farPlane;
+uniform float shadowTexelWorldSize;
 
 uniform vec3 cameraPos;
 
@@ -55,7 +57,17 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
     float closestDepth = texture(shadowMap, projCoords.xy).r;
     float currentDepth = projCoords.z;
 
-    float bias = max(0.01 * (1.0 - max(dot(normal, lightDir),0.0)), 0.001);
+    // slope scale in world units, grows at grazing angles
+    float NdotL = max(dot(normal, lightDir), 0.0);
+    float slope = clamp(sqrt(1.0 - NdotL * NdotL) / max(NdotL, 0.05), 0.0, 8.0);
+
+    // world-space bias: proportional to texel footprint, scaled by slope
+    float biasWorld = clamp(slope * shadowTexelWorldSize * 1.5,
+                             shadowTexelWorldSize * 0.5,
+                             shadowTexelWorldSize * 8.0);
+
+    // convert to NDC depth space using the actual frustum range
+    float bias = biasWorld / (farPlane - nearPlane);
 
     float shadow = 0.0;
 
@@ -72,6 +84,7 @@ float ShadowCalculation(vec4 fragPosLightSpace, vec3 normal, vec3 lightDir)
 
     return shadow;
 }
+
 vec3 sampleOffsetDirections[20] = vec3[](
    vec3( 1,  1,  1), vec3(-1,  1,  1), vec3( 1, -1,  1), vec3(-1, -1,  1),
    vec3( 1,  1, -1), vec3(-1,  1, -1), vec3( 1, -1, -1), vec3(-1, -1, -1),
